@@ -541,19 +541,15 @@
   <main class="container">
     <div class="tab-links">
       <button class="tab-link active" id="tab-raw">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
         Scenario Comparison
       </button>
       <button class="tab-link" id="tab-distribution">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="M12 12v9"></path><path d="M8 17h8"></path></svg>
-        Distribution Analysis
+        Uncertainty
       </button>
       <button class="tab-link" id="tab-percentage">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
         Percentage Change
       </button>
       <button class="tab-link" id="tab-trends">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
         Trend Analysis
       </button>
     </div>
@@ -562,17 +558,6 @@
     <div id="raw" class="tab-content active">
       <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1rem; padding-bottom: 0.5rem;">
         <h2 style="margin-bottom: 0;">Climate & Land-Use Scenario Impacts</h2>
-        <span class="subtitle">100 Sample Average</span>
-      </div>
-      
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 0.75rem;">
-        <div class="feature-toggle" style="display: flex; align-items: center; gap: 0.5rem; background: rgba(241, 245, 249, 0.7); padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.8rem; color: #475569;">
-          <span>Comparison Mode:</span>
-          <select id="comparisonMode" style="background: white; border: 1px solid #e2e8f0; padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: #334155;">
-            <option value="grouped">Grouped</option>
-            <option value="stacked">Stacked</option>
-          </select>
-        </div>
       </div>
       
       <div class="plot-description">
@@ -614,15 +599,10 @@
       </div>
     </div>
     
-    <!-- Distribution Analysis Tab (React/Recharts) -->
+    <!-- Uncertainty Tab (React/Recharts) -->
     <div id="distribution" class="tab-content">
-      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem;">
-        <h2 style="margin-bottom: 0;">Uncertainty Analysis</h2>
-        <span class="subtitle">100 Run Statistical Distribution</span>
-      </div>
-      
       <div class="plot-description">
-        This visualization quantifies the <b>uncertainty</b> in our hydrologic model simulations for Madias Creek. Using LiDAR-derived elevation data and HEC-HMS modeling, we ran 100 simulations for each scenario to account for variability in:
+        This visualization quantifies the <b>uncertainty</b> in our hydrologic model simulations for Madias Creek. Using LiDAR-derived elevation data and HEC-HMS modeling, we ran GEOG 508 simulations for each scenario to account for variability in:
         
         <ul>
           <li>Precipitation patterns (using data from Kootenay West Gate & Windermere Gauge Station)</li>
@@ -632,8 +612,6 @@
         
         The box plots show statistical distributions of outflow values, with each scenario's spread representing model uncertainty. The Current scenario shows the narrowest range, while future projections show wider spreads due to climate uncertainty. This analysis helps ʔakisq̓nuk First Nation and RDEK planners understand not just average effects but the full range of possible outcomes for flood management decisions.
       </div>
-      
-      <div class="data-source-note">Full 100 samples from the uncertainty model runs</div>
       
       <!-- React component will render here -->
       <div id="distributionReactRoot"></div> 
@@ -731,7 +709,7 @@
   <footer style="text-align: center; padding: 1.5rem 0; font-size: 0.75rem; color: #64748b; margin-top: 2rem; border-top: 1px solid rgba(203, 213, 225, 0.3);">
     <div class="container" style="margin-top: 0; margin-bottom: 0; padding: 0; background: transparent; box-shadow: none; transform: none; border: none;">
       <p style="margin: 0;">Madias Creek Watershed Analysis Dashboard • Created for ʔakisq̓nuk First Nation & RDEK</p>
-      <p style="margin-top: 0.5rem; font-size: 0.7rem; color: #94a3b8;">Data from HEC-HMS modeling with 100 samples per scenario • Last updated April 2025</p>
+      <p style="margin-top: 0.5rem; font-size: 0.7rem; color: #94a3b8;">Data from HEC-HMS modeling with GEOG 508 • Created by: Ali, Harrison, Adara, Kingsley • Last updated April 2025</p>
     </div>
   </footer>
   
@@ -1686,15 +1664,15 @@
             // Fallback if no valid data found
              console.warn(`Could not determine valid min/max for ${targetKey}. Using fallback range.`);
             return yearGroup === '2yr' 
-                   ? (dataType === 'low' ? [1.0, 1.5] : [2.0, 2.6]) // Tighter fallbacks
-                   : (dataType === 'low' ? [7.0, 12.0] : [15.0, 24.0]); // Tighter fallbacks
+                   ? (dataType === 'low' ? [1.05, 1.4] : [1.8, 2.5]) // Tighter fallbacks
+                   : (dataType === 'low' ? [8.0, 11.0] : [15.0, 20.0]); // Tighter fallbacks
         }
 
         // Add more substantial padding (increased to 30% for better visualization)
         const range = overallMax - overallMin;
         
-        // For 2-year events, create more spread in Y-axis to avoid compression
-        const paddingPercentage = yearGroup === '2yr' ? 0.35 : 0.25; // 35% for 2yr, 25% for 200yr
+        // For 2-year events, use tighter padding
+        const paddingPercentage = yearGroup === '2yr' ? 0.15 : 0.10; // 15% for 2yr, 10% for 200yr
         
         // Handle case where min and max are the same
         const padding = range === 0 ? overallMax * paddingPercentage || 0.2 : range * paddingPercentage; 
@@ -1711,17 +1689,17 @@
         if (yearGroup === '2yr') {
             if (dataType === 'low') {
                 // For low events, ensure we don't go too high
-                domainMax = Math.min(domainMax, 2.0); // Cap max for low events
+                domainMax = Math.min(domainMax, 1.4); // Cap max for low events
                 // Ensure we have enough range
-                if (domainMax - domainMin < 0.5) {
-                    domainMax = domainMin + 0.5;
+                if (domainMax - domainMin < 0.3) {
+                    domainMax = domainMin + 0.3;
                 }
             } else {
                 // For peak events, ensure we don't go too low
                 domainMin = Math.max(domainMin, 1.8); // Set min floor for peak events
                 // Ensure we have enough range
-                if (domainMax - domainMin < 0.8) {
-                    domainMax = domainMin + 0.8;
+                if (domainMax - domainMin < 0.4) {
+                    domainMax = domainMin + 0.4;
                 }
             }
         }

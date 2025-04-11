@@ -47,19 +47,19 @@ function ModernWaterDashboard() {
     return () => clearInterval(interval);
   }, []);
   
-  // Animation functions for distribution tab
-  const animateDistribution = () => {
+  // Animation functions for uncertainty tab
+  const animateUncertainty = () => {
     setIsAnimating(true);
     // Animation will be handled in the component render
     setTimeout(() => setIsAnimating(false), 3000);
   };
   
-  // Auto-trigger animation when distribution tab is activated
+  // Auto-trigger animation when uncertainty tab is activated
   useEffect(() => {
-    if (activeTab === 'distribution' && dataLoaded) {
+    if (activeTab === 'uncertainty' && dataLoaded) {
       // Short delay to ensure components are rendered
       setTimeout(() => {
-        animateDistribution();
+        animateUncertainty();
       }, 500);
     }
   }, [activeTab, dataLoaded]);
@@ -84,9 +84,9 @@ function ModernWaterDashboard() {
   // Get domain range for the selected year group
   const getDistributionYAxisRange = (yearGroup) => {
     if (yearGroup === '2yr') {
-      return [1.0, 2.6]; // Range that covers both 2yr low and peak
+      return [1.05, 2.5]; // Tighter range for 2yr low and peak
     } else {
-      return [7.0, 24.0]; // Range that covers both 200yr low and peak
+      return [8.0, 20.0]; // Tighter range for 200yr low and peak
     }
   };
   
@@ -288,19 +288,17 @@ function ModernWaterDashboard() {
                 : 'bg-gray-100 bg-opacity-70 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
             Scenario Comparison
           </button>
           <button 
-            onClick={() => setActiveTab('distribution')} 
+            onClick={() => setActiveTab('uncertainty')} 
             className={`px-4 py-2.5 font-medium text-xs sm:text-sm rounded-lg mr-1 transition-all flex items-center ${
-              activeTab === 'distribution' 
+              activeTab === 'uncertainty' 
                 ? 'bg-white shadow-sm border-b-2 border-blue-600 text-blue-700 transform translate-y-0.5' 
                 : 'bg-gray-100 bg-opacity-70 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M3 3v18h18"></path><path d="M18 12H6"></path><path d="M18 7H6"></path><path d="M18 17H6"></path></svg>
-            Distribution Analysis
+            Uncertainty
           </button>
           <button 
             onClick={() => setActiveTab('percentage')} 
@@ -310,7 +308,6 @@ function ModernWaterDashboard() {
                 : 'bg-gray-100 bg-opacity-70 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M19 5L5 19"></path><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>
             Percentage Change
           </button>
           <button 
@@ -321,27 +318,9 @@ function ModernWaterDashboard() {
                 : 'bg-gray-100 bg-opacity-70 text-gray-600 hover:bg-gray-200 hover:text-gray-700'
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
             Trend Analysis
           </button>
         </div>
-        
-        {/* Comparison Mode Toggle */}
-        {activeTab === 'raw' && (
-          <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem'}}>
-            <div className="feature-toggle" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(241, 245, 249, 0.7)', padding: '0.4rem 0.7rem', borderRadius: '6px', fontSize: '0.8rem', color: '#475569'}}>
-              <span>Comparison Mode:</span>
-              <select 
-                value={comparisonMode}
-                onChange={(e) => setComparisonMode(e.target.value)}
-                style={{background: 'white', border: '1px solid #e2e8f0', padding: '0.3rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', color: '#334155'}}
-              >
-                <option value="grouped">Grouped</option>
-                <option value="stacked">Stacked</option>
-              </select>
-            </div>
-          </div>
-        )}
         
         {/* Chart Containers */}
         {activeTab === 'raw' && (
@@ -397,7 +376,7 @@ function ModernWaterDashboard() {
                     fill="#2563eb" 
                     radius={[4, 4, 0, 0]} 
                     isAnimationActive={true} 
-                    stackId={comparisonMode === 'stacked' ? 'stack' : undefined}
+                    stackId={undefined}
                   />
                   <Bar 
                     dataKey="Baseline" 
@@ -405,7 +384,7 @@ function ModernWaterDashboard() {
                     fill="#f59e0b" 
                     radius={[4, 4, 0, 0]} 
                     isAnimationActive={true} 
-                    stackId={comparisonMode === 'stacked' ? 'stack' : undefined}
+                    stackId={undefined}
                   />
                   <Bar 
                     dataKey="Replant" 
@@ -413,7 +392,7 @@ function ModernWaterDashboard() {
                     fill="#0ea5e9" 
                     radius={[4, 4, 0, 0]} 
                     isAnimationActive={true} 
-                    stackId={comparisonMode === 'stacked' ? 'stack' : undefined}
+                    stackId={undefined}
                   />
                   <Bar 
                     dataKey="Urban" 
@@ -421,7 +400,7 @@ function ModernWaterDashboard() {
                     fill="#ef4444" 
                     radius={[4, 4, 0, 0]} 
                     isAnimationActive={true} 
-                    stackId={comparisonMode === 'stacked' ? 'stack' : undefined}
+                    stackId={undefined}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -456,13 +435,10 @@ function ModernWaterDashboard() {
           </div>
         )}
         
-        {activeTab === 'distribution' && (
+        {activeTab === 'uncertainty' && (
           <div className="bg-white bg-opacity-95 backdrop-filter backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6 border border-gray-100 transform transition-all hover:shadow-xl hover:translate-y-[-2px]">
             <div className="mb-4">
-              <h2 className="text-xl font-semibold mb-1 bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
-                Distribution Analysis ({selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} Return Period)
-              </h2>
-              <p className="text-gray-600 text-xs italic">Combined low and peak scenario distribution</p>
+              <p className="text-gray-600 text-xs italic">Analysis of uncertainty in low and peak scenarios</p>
             </div>
             
             {/* Period selector with modern styling */}
@@ -550,6 +526,9 @@ function ModernWaterDashboard() {
                         domain={distributionZoom.lowDomain || getDistributionYAxisRange(selectedYearGroup)}
                         label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 } }}
                         tick={{ fontSize: 11 }}
+                        tickCount={5}
+                        allowDecimals={true}
+                        tickFormatter={(value) => value.toFixed(2)}
                       />
                       <Tooltip 
                         formatter={(value) => [value.toFixed(4), 'Value']}
@@ -655,6 +634,9 @@ function ModernWaterDashboard() {
                         domain={distributionZoom.lowDomain || getDistributionYAxisRange(selectedYearGroup)}
                         label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 } }}
                         tick={{ fontSize: 11 }}
+                        tickCount={5}
+                        allowDecimals={true}
+                        tickFormatter={(value) => value.toFixed(2)}
                       />
                       <Tooltip 
                         formatter={(value) => [value.toFixed(4), 'Value']}
