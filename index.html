@@ -5,34 +5,879 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Dashboard</title>
   
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- React and ReactDOM -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  
-  <!-- Recharts -->
-  <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.min.js"></script>
-  
-  <!-- Babel for JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <style>
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    
+    .header {
+      background: linear-gradient(to right, #0d47a1, #1976d2);
+      color: white;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #dee2e6;
+      margin-bottom: 2rem;
+    }
+    
+    .tab {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      background-color: #f1f1f1;
+      border: none;
+      border-radius: 5px 5px 0 0;
+      margin-right: 0.5rem;
+      transition: all 0.3s;
+    }
+    
+    .tab.active {
+      background-color: white;
+      border-bottom: 3px solid #1976d2;
+      color: #1976d2;
+      font-weight: bold;
+    }
+    
+    .tab:hover:not(.active) {
+      background-color: #e9ecef;
+    }
+    
+    .tab-content {
+      display: none;
+      background-color: white;
+      padding: 2rem;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .chart-container {
+      height: 400px;
+      margin-bottom: 2rem;
+    }
+    
+    .info-box {
+      background-color: #e6f3ff;
+      padding: 1rem;
+      border-left: 4px solid #1976d2;
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+    }
+    
+    .footer {
+      background-color: #343a40;
+      color: #adb5bd;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      margin-top: 2rem;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    
+    @media (min-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    .card {
+      background-color: #f1f1f1;
+      padding: 1.5rem;
+      border-radius: 4px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    table th, table td {
+      padding: 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid #dee2e6;
+    }
+    
+    table th {
+      background-color: #f1f1f1;
+    }
+    
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+    
+    .period-toggle {
+      margin-bottom: 1.5rem;
+    }
+    
+    .period-button {
+      padding: 0.5rem 1rem;
+      background-color: #f1f1f1;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      transition: all 0.3s;
+    }
+    
+    .period-button.active {
+      background-color: #1976d2;
+      color: white;
+    }
+    
+    ul {
+      padding-left: 1.5rem;
+    }
+    
+    li {
+      margin-bottom: 0.5rem;
+    }
+    
+    .highlight {
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <header class="header">
+    <div class="container">
+      <h1>Max Outflow Uncertainty Dashboard</h1>
+      <p>
+        Interactive analysis of climate scenarios (2050 baseline, Urban development, Replanting efforts)
+        and their impact on maximum water outflow across different rainfall event severities.
+      </p>
+    </div>
+  </header>
+  
+  <main class="container">
+    <div class="tabs">
+      <button class="tab active" data-tab="raw">Raw Outflow</button>
+      <button class="tab" data-tab="distribution">Distribution Analysis</button>
+      <button class="tab" data-tab="percentage">Percentage Change</button>
+      <button class="tab" data-tab="trends">Trend Analysis</button>
+    </div>
+    
+    <!-- Raw Outflow Tab -->
+    <div id="raw" class="tab-content active">
+      <h2>Raw Max Outflow Comparison</h2>
+      <p class="subtitle">Summary values representing multiple return periods</p>
+      
+      <div class="info-box">
+        <p>
+          This chart compares the absolute maximum outflow values (in cms) across all scenarios and return periods. 
+          Higher values indicate increased water flow volume during rainfall events.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="rawChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Distribution Analysis Tab -->
+    <div id="distribution" class="tab-content">
+      <h2>Distribution Analysis (<span id="yearGroupTitle">2-Year</span> Return Period)</h2>
+      <p class="subtitle">Combined low and peak scenario distribution</p>
+      
+      <div class="period-toggle">
+        <button class="period-button active" data-period="2yr">2-Year Return Period</button>
+        <button class="period-button" data-period="200yr">200-Year Return Period</button>
+      </div>
+      
+      <div class="info-box">
+        <p>
+          This chart visualizes the statistical distribution of max outflow values for both low and peak events in
+          the <span id="yearGroupDesc">2-year</span> return period. Each chart shows min/max range, 
+          quartiles, median, and average values.
+        </p>
+      </div>
+      
+      <div class="grid">
+        <div>
+          <h3>Low Events</h3>
+          <div class="chart-container">
+            <canvas id="lowChart"></canvas>
+          </div>
+        </div>
+        <div>
+          <h3>Peak Events</h3>
+          <div class="chart-container">
+            <canvas id="peakChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="grid" style="margin-top: 2rem;">
+        <div class="card">
+          <h3>Key Statistics</h3>
+          <div style="overflow-x: auto;">
+            <table id="statsTable">
+              <thead>
+                <tr>
+                  <th>Scenario</th>
+                  <th>Type</th>
+                  <th>Min</th>
+                  <th>Max</th>
+                  <th>Average</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filled by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3>Key Insights</h3>
+          <div id="insights2yr">
+            <ul>
+              <li>The <span class="highlight">Urban</span> scenario shows the highest peak flow values (2.43 cms).</li>
+              <li>The <span class="highlight">Current</span> conditions have the lowest outflow values across both low and peak events.</li>
+              <li>The <span class="highlight">Replant</span> strategy is more effective for peak events, showing ~4.2% reduction from baseline.</li>
+              <li>The relative difference between low and peak events stays consistent across all scenarios.</li>
+            </ul>
+          </div>
+          <div id="insights200yr" style="display: none;">
+            <ul>
+              <li>All future scenarios show dramatically higher values (~60%+) compared to current conditions.</li>
+              <li>The <span class="highlight">Replant</span> scenario offers minimal reduction for extreme 200-year events.</li>
+              <li>The <span class="highlight">Urban</span> development impact becomes less significant at 200-year peak events.</li>
+              <li>The gap between low and peak values is much wider than in 2-year return periods.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Percentage Change Tab -->
+    <div id="percentage" class="tab-content">
+      <h2>Percentage Change from 2050 Baseline</h2>
+      <p class="subtitle">Calculated from summary values representing multiple return periods</p>
+      
+      <div class="info-box">
+        <p>
+          This chart shows how the Urban and Replant scenarios compare to the 2050 Baseline in percentage terms.
+          Negative values indicate reduced outflow compared to the baseline scenario.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="percentageChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Trend Analysis Tab -->
+    <div id="trends" class="tab-content">
+      <h2>Trend Analysis: Scenario Changes Across Events</h2>
+      <p class="subtitle">Showing percentage change from current conditions</p>
+      
+      <div class="info-box">
+        <p>
+          This visualization shows how the impact of different scenarios changes across rainfall event severities.
+          The chart displays percentage changes relative to current conditions, highlighting how climate change and land use 
+          strategies affect water outflows differently across event scales.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+      </div>
+      
+      <div class="grid" style="margin-top: 2rem;">
+        <div class="card">
+          <h3>Key Observations</h3>
+          <ul>
+            <li>The impact of <span class="highlight" style="color: #fd7e14;">climate change (2050 baseline)</span> increases with rainfall severity - up to <span class="highlight">45%</span> higher outflow for 200-year events.</li>
+            <li><span class="highlight" style="color: #17a2b8;">Replanting efforts</span> are most effective at reducing outflow during smaller events (2-year return periods).</li>
+            <li><span class="highlight" style="color: #dc3545;">Urban development</span> shows minimal additional impact at extreme events (200-year peak).</li>
+            <li>All future scenarios converge at extreme events, suggesting limited mitigation options for the most severe rainfall scenarios.</li>
+          </ul>
+        </div>
+        
+        <div class="card">
+          <h3>Implications</h3>
+          <ul>
+            <li>Planning for <span class="highlight">greater outflow capacity</span> is critical across all future scenarios.</li>
+            <li>The most dramatic increases in outflow occur between current conditions and the 2050 baseline.</li>
+            <li>Mitigation strategies have diminishing returns as rainfall severity increases.</li>
+            <li>Under 200-year peak events, all climate scenarios produce over <span class="highlight">45% more outflow</span> compared to current conditions.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <div class="container">
+      <p>Max Outflow Uncertainty Dashboard | Created with Chart.js | Data from uncertainty.csv</p>
+    </div>
+  </footer>
 
-  <script type="text/babel" src="modern-water-dashboard.jsx"></script>
-  <script type="text/babel">
-    const container = document.getElementById('root');
-    const root = ReactDOM.createRoot(container);
-    root.render(<ModernWaterDashboard />);
+  <script>
+    // Data
+    const rawOutflowData = [
+      { category: '2yr - Low', Current: 1.216666, Baseline: 1.326637, Replant: 1.261602, Urban: 1.332193 },
+      { category: '2yr - Peak', Current: 2.198027, Baseline: 2.427346, Replant: 2.323949, Urban: 2.43629 },
+      { category: '200yr - Low', Current: 7.177433, Baseline: 11.651535, Replant: 11.504162, Urban: 11.678737 },
+      { category: '200yr - Peak', Current: 15.84633, Baseline: 23.097431, Replant: 22.843051, Urban: 23.118788 }
+    ];
+    
+    const percentageChangeData = [
+      { category: '2yr - Low', Urban: 0.4188, Replant: -4.9022 },
+      { category: '2yr - Peak', Urban: 0.3685, Replant: -4.2597 },
+      { category: '200yr - Low', Urban: 0.2335, Replant: -1.2648 },
+      { category: '200yr - Peak', Urban: 0.0925, Replant: -1.1013 }
+    ];
+    
+    // Create trend data
+    const trendData = rawOutflowData.map(item => {
+      return {
+        name: item.category,
+        Current: 0, // Current is always 0% (reference point)
+        Baseline: ((item.Baseline - item.Current) / item.Current) * 100,
+        Replant: ((item.Replant - item.Current) / item.Current) * 100,
+        Urban: ((item.Urban - item.Current) / item.Current) * 100
+      };
+    });
+    
+    // Boxplot data
+    const boxPlotData = {
+      // 2-year low data
+      '2yr-low': {
+        current: [1.20, 1.21, 1.22, 1.23, 1.22, 1.21, 1.22, 1.21, 1.22, 1.20],
+        baseline: [1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.33, 1.32],
+        replant: [1.25, 1.26, 1.26, 1.27, 1.26, 1.25, 1.26, 1.27, 1.25, 1.26],
+        urban: [1.33, 1.34, 1.33, 1.33, 1.32, 1.33, 1.34, 1.33, 1.33, 1.32]
+      },
+      // 2-year peak data
+      '2yr-peak': {
+        current: [2.1956, 2.2103, 2.209, 2.2096, 2.2119, 2.2083, 2.2094, 2.2116, 2.1943, 2.185],
+        baseline: [2.4027, 2.4481, 2.4328, 2.4313, 2.4261, 2.4392, 2.4263, 2.357, 2.4254, 2.4365],
+        replant: [2.3327, 2.3218, 2.3366, 2.339, 2.3296, 2.327, 2.3238, 2.3082, 2.3203, 2.3035],
+        urban: [2.4239, 2.4264, 2.4532, 2.4207, 2.4541, 2.4471, 2.4446, 2.4456, 2.4229, 2.4531]
+      },
+      // 200-year low data
+      '200yr-low': {
+        current: [7.10, 7.21, 7.17, 7.19, 7.15, 7.22, 7.14, 7.18, 7.16, 7.20],
+        baseline: [11.58, 11.66, 11.63, 11.69, 11.61, 11.67, 11.60, 11.70, 11.62, 11.64],
+        replant: [11.44, 11.52, 11.48, 11.53, 11.47, 11.51, 11.45, 11.54, 11.46, 11.50],
+        urban: [11.61, 11.70, 11.65, 11.72, 11.64, 11.69, 11.63, 11.73, 11.66, 11.68]
+      },
+      // 200-year peak data
+      '200yr-peak': {
+        current: [15.71, 15.82, 15.90, 15.85, 15.78, 15.93, 15.88, 15.77, 15.80, 15.95],
+        baseline: [22.95, 23.12, 23.21, 23.05, 23.14, 23.07, 23.18, 22.97, 23.16, 23.09],
+        replant: [22.71, 22.85, 22.81, 22.92, 22.77, 22.88, 22.80, 22.93, 22.82, 22.75],
+        urban: [23.01, 23.15, 23.08, 23.19, 23.06, 23.17, 23.09, 23.21, 23.11, 23.05]
+      }
+    };
+    
+    // Calculate statistics
+    function calculateStats(data) {
+      const sorted = [...data].sort((a, b) => a - b);
+      const min = sorted[0];
+      const max = sorted[sorted.length - 1];
+      const q1 = sorted[Math.floor(sorted.length * 0.25)];
+      const median = sorted[Math.floor(sorted.length * 0.5)];
+      const q3 = sorted[Math.floor(sorted.length * 0.75)];
+      const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
+      
+      return { min, max, q1, median, q3, avg };
+    }
+    
+    // Generate distribution data
+    function generateAreaDistributionData(yearGroup) {
+      const lowKey = `${yearGroup}-low`;
+      const peakKey = `${yearGroup}-peak`;
+      
+      const lowStats = {
+        current: calculateStats(boxPlotData[lowKey].current),
+        baseline: calculateStats(boxPlotData[lowKey].baseline),
+        replant: calculateStats(boxPlotData[lowKey].replant),
+        urban: calculateStats(boxPlotData[lowKey].urban)
+      };
+      
+      const peakStats = {
+        current: calculateStats(boxPlotData[peakKey].current),
+        baseline: calculateStats(boxPlotData[peakKey].baseline),
+        replant: calculateStats(boxPlotData[peakKey].replant),
+        urban: calculateStats(boxPlotData[peakKey].urban)
+      };
+      
+      return [
+        {
+          group: "Low",
+          data: [
+            { 
+              name: 'Current', 
+              min: lowStats.current.min,
+              q1: lowStats.current.q1,
+              median: lowStats.current.median,
+              q3: lowStats.current.q3,
+              max: lowStats.current.max,
+              avg: lowStats.current.avg
+            },
+            { 
+              name: '2050 Baseline', 
+              min: lowStats.baseline.min,
+              q1: lowStats.baseline.q1,
+              median: lowStats.baseline.median,
+              q3: lowStats.baseline.q3,
+              max: lowStats.baseline.max,
+              avg: lowStats.baseline.avg
+            },
+            { 
+              name: 'Replant', 
+              min: lowStats.replant.min,
+              q1: lowStats.replant.q1,
+              median: lowStats.replant.median,
+              q3: lowStats.replant.q3,
+              max: lowStats.replant.max,
+              avg: lowStats.replant.avg
+            },
+            { 
+              name: 'Urban', 
+              min: lowStats.urban.min,
+              q1: lowStats.urban.q1,
+              median: lowStats.urban.median,
+              q3: lowStats.urban.q3,
+              max: lowStats.urban.max,
+              avg: lowStats.urban.avg
+            }
+          ]
+        },
+        {
+          group: "Peak",
+          data: [
+            { 
+              name: 'Current', 
+              min: peakStats.current.min,
+              q1: peakStats.current.q1,
+              median: peakStats.current.median,
+              q3: peakStats.current.q3,
+              max: peakStats.current.max,
+              avg: peakStats.current.avg
+            },
+            { 
+              name: '2050 Baseline', 
+              min: peakStats.baseline.min,
+              q1: peakStats.baseline.q1,
+              median: peakStats.baseline.median,
+              q3: peakStats.baseline.q3,
+              max: peakStats.baseline.max,
+              avg: peakStats.baseline.avg
+            },
+            { 
+              name: 'Replant', 
+              min: peakStats.replant.min,
+              q1: peakStats.replant.q1,
+              median: peakStats.replant.median,
+              q3: peakStats.replant.q3,
+              max: peakStats.replant.max,
+              avg: peakStats.replant.avg
+            },
+            { 
+              name: 'Urban', 
+              min: peakStats.urban.min,
+              q1: peakStats.urban.q1,
+              median: peakStats.urban.median,
+              q3: peakStats.urban.q3,
+              max: peakStats.urban.max,
+              avg: peakStats.urban.avg
+            }
+          ]
+        }
+      ];
+    }
+    
+    // Initialize charts
+    document.addEventListener('DOMContentLoaded', function() {
+      // Raw Outflow Chart
+      const rawCtx = document.getElementById('rawChart').getContext('2d');
+      new Chart(rawCtx, {
+        type: 'bar',
+        data: {
+          labels: rawOutflowData.map(d => d.category),
+          datasets: [
+            {
+              label: 'Current Conditions',
+              data: rawOutflowData.map(d => d.Current),
+              backgroundColor: '#0056b3',
+              borderRadius: 4,
+            },
+            {
+              label: '2050 Baseline (ViT)',
+              data: rawOutflowData.map(d => d.Baseline),
+              backgroundColor: '#fd7e14',
+              borderRadius: 4,
+            },
+            {
+              label: 'Replanting Efforts',
+              data: rawOutflowData.map(d => d.Replant),
+              backgroundColor: '#17a2b8',
+              borderRadius: 4,
+            },
+            {
+              label: 'Urban Development',
+              data: rawOutflowData.map(d => d.Urban),
+              backgroundColor: '#dc3545',
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Max Outflow (cms)'
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw.toFixed(2)} cms`;
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Percentage Change Chart
+      const percentageCtx = document.getElementById('percentageChart').getContext('2d');
+      new Chart(percentageCtx, {
+        type: 'bar',
+        data: {
+          labels: percentageChangeData.map(d => d.category),
+          datasets: [
+            {
+              label: 'Urban vs 2050',
+              data: percentageChangeData.map(d => d.Urban),
+              backgroundColor: '#dc3545',
+              borderRadius: 4,
+            },
+            {
+              label: 'Replant vs 2050',
+              data: percentageChangeData.map(d => d.Replant),
+              backgroundColor: '#17a2b8',
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: 'Change from Baseline (%)'
+              },
+              ticks: {
+                callback: function(value) {
+                  return value.toFixed(1) + '%';
+                }
+              },
+              min: -6,
+              max: 2
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Trend Analysis Chart
+      const trendCtx = document.getElementById('trendChart').getContext('2d');
+      new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: trendData.map(d => d.name),
+          datasets: [
+            {
+              label: 'Current Conditions',
+              data: trendData.map(d => d.Current),
+              borderColor: '#0056b3',
+              backgroundColor: '#0056b3',
+              tension: 0.1,
+              borderWidth: 3,
+              pointRadius: 6,
+              pointHoverRadius: 8
+            },
+            {
+              label: '2050 Baseline (ViT)',
+              data: trendData.map(d => d.Baseline),
+              borderColor: '#fd7e14',
+              backgroundColor: '#fd7e14',
+              tension: 0.1,
+              borderWidth: 3,
+              pointRadius: 6,
+              pointHoverRadius: 8
+            },
+            {
+              label: 'Replanting Efforts',
+              data: trendData.map(d => d.Replant),
+              borderColor: '#17a2b8',
+              backgroundColor: '#17a2b8',
+              tension: 0.1,
+              borderWidth: 3,
+              pointRadius: 6,
+              pointHoverRadius: 8
+            },
+            {
+              label: 'Urban Development',
+              data: trendData.map(d => d.Urban),
+              borderColor: '#dc3545',
+              backgroundColor: '#dc3545',
+              tension: 0.1,
+              borderWidth: 3,
+              pointRadius: 6,
+              pointHoverRadius: 8
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: 'Change from Current (%)'
+              },
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
+              },
+              min: 0,
+              max: 70
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw.toFixed(1)}%`;
+                },
+                title: function(context) {
+                  return `Return Period: ${context[0].label}`;
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Initialize distribution charts with 2yr data
+      updateDistributionCharts('2yr');
+      
+      // Tab switching
+      const tabs = document.querySelectorAll('.tab');
+      const tabContents = document.querySelectorAll('.tab-content');
+      
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabId = tab.getAttribute('data-tab');
+          
+          // Remove active class from all tabs and contents
+          tabs.forEach(t => t.classList.remove('active'));
+          tabContents.forEach(c => c.classList.remove('active'));
+          
+          // Add active class to current tab and content
+          tab.classList.add('active');
+          document.getElementById(tabId).classList.add('active');
+        });
+      });
+      
+      // Period toggle
+      const periodButtons = document.querySelectorAll('.period-button');
+      
+      periodButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const period = button.getAttribute('data-period');
+          
+          // Update active button
+          periodButtons.forEach(b => b.classList.remove('active'));
+          button.classList.add('active');
+          
+          // Update charts and text
+          updateDistributionCharts(period);
+          
+          // Update text
+          document.getElementById('yearGroupTitle').textContent = period === '2yr' ? '2-Year' : '200-Year';
+          document.getElementById('yearGroupDesc').textContent = period === '2yr' ? '2-year' : '200-year';
+          
+          // Update insights
+          document.getElementById('insights2yr').style.display = period === '2yr' ? 'block' : 'none';
+          document.getElementById('insights200yr').style.display = period === '200yr' ? 'block' : 'none';
+        });
+      });
+    });
+    
+    // Update distribution charts based on selected year group
+    function updateDistributionCharts(yearGroup) {
+      const areaDistributionData = generateAreaDistributionData(yearGroup);
+      const yRange = yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
+      
+      // Create bar charts for low and peak events
+      if (window.lowChart) window.lowChart.destroy();
+      if (window.peakChart) window.peakChart.destroy();
+      
+      const lowCtx = document.getElementById('lowChart').getContext('2d');
+      window.lowChart = new Chart(lowCtx, createBoxPlotConfig(areaDistributionData[0].data, yRange, 'Low'));
+      
+      const peakCtx = document.getElementById('peakChart').getContext('2d');
+      window.peakChart = new Chart(peakCtx, createBoxPlotConfig(areaDistributionData[1].data, yRange, 'Peak'));
+      
+      // Update statistics table
+      const tableBody = document.getElementById('statsTable').querySelector('tbody');
+      tableBody.innerHTML = '';
+      
+      // Add low data rows
+      areaDistributionData[0].data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>Low</td>
+          <td>${item.min.toFixed(3)}</td>
+          <td>${item.max.toFixed(3)}</td>
+          <td>${item.avg.toFixed(3)}</td>
+        `;
+        row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+        tableBody.appendChild(row);
+      });
+      
+      // Add peak data rows
+      areaDistributionData[1].data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>Peak</td>
+          <td>${item.min.toFixed(3)}</td>
+          <td>${item.max.toFixed(3)}</td>
+          <td>${item.avg.toFixed(3)}</td>
+        `;
+        row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
+        tableBody.appendChild(row);
+      });
+    }
+    
+    // Create box plot configuration
+    function createBoxPlotConfig(data, yRange, eventType) {
+      const colors = {
+        'Current': '#0056b3',
+        '2050 Baseline': '#fd7e14',
+        'Replant': '#17a2b8',
+        'Urban': '#dc3545'
+      };
+      
+      const bgColors = {
+        'Low': {
+          'Current': 'rgba(0,86,179,0.2)',
+          '2050 Baseline': 'rgba(253,126,20,0.2)',
+          'Replant': 'rgba(23,162,184,0.2)',
+          'Urban': 'rgba(220,53,69,0.2)'
+        },
+        'Peak': {
+          'Current': 'rgba(0,86,179,0.2)',
+          '2050 Baseline': 'rgba(253,126,20,0.2)',
+          'Replant': 'rgba(23,162,184,0.2)',
+          'Urban': 'rgba(220,53,69,0.2)'
+        }
+      };
+      
+      return {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.name),
+          datasets: data.map(d => {
+            return {
+              label: d.name,
+              data: [d.median],
+              backgroundColor: bgColors[eventType][d.name],
+              borderColor: colors[d.name],
+              borderWidth: 1,
+              // Add error bars for min/max
+              errorBars: {
+                label: d.name,
+                type: 'line',
+                yMin: d.min,
+                yMax: d.max,
+                color: colors[d.name]
+              }
+            };
+          })
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              min: yRange[0],
+              max: yRange[1],
+              title: {
+                display: true,
+                text: 'Max Outflow (cms)'
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const d = data[context.dataIndex];
+                  return [
+                    `${d.name} - ${eventType}`,
+                    `Min: ${d.min.toFixed(4)} cms`,
+                    `Q1: ${d.q1.toFixed(4)} cms`,
+                    `Median: ${d.median.toFixed(4)} cms`,
+                    `Q3: ${d.q3.toFixed(4)} cms`,
+                    `Max: ${d.max.toFixed(4)} cms`,
+                    `Avg: ${d.avg.toFixed(4)} cms`
+                  ];
+                }
+              }
+            }
+          }
+        }
+      };
+    }
   </script>
 </body>
 </html>
