@@ -409,18 +409,26 @@
           window.trendData = [];
         }
         
-        // Load box plot data from sheets with expected names
+        // Load box plot data using the correct sheet names
         window.boxPlotData = {};
-        const boxPlotSheetNames = ['2yr-low', '2yr-peak', '200yr-low', '200yr-peak'];
+        const boxPlotSheetNames = {
+            low2yr: "2yr max outflow - low",
+            peak2yr: "2yr max outflow - peak",
+            low200yr: "200yr max outflow - low",
+            peak200yr: "200yr max outflow - peak"
+        };
         
-        for (const sheetName of boxPlotSheetNames) {
+        // Array of the exact sheet names to search for
+        const exactSheetNames = Object.values(boxPlotSheetNames);
+        
+        for (const sheetName of exactSheetNames) {
           // Try to find exact match first
-          let matchingSheet = workbook.SheetNames.find(name => name.toLowerCase() === sheetName.toLowerCase());
+          let matchingSheet = workbook.SheetNames.find(name => name === sheetName);
           
-          // If no exact match, look for partial match
+          // If no exact match, try case-insensitive match
           if (!matchingSheet) {
             matchingSheet = workbook.SheetNames.find(name => 
-              name.toLowerCase().includes(sheetName.toLowerCase()));
+              name.toLowerCase() === sheetName.toLowerCase());
           }
           
           if (matchingSheet) {
@@ -681,31 +689,43 @@
     };
 
     const generateAreaDistributionData = (yearGroup) => {
-        const lowKey = `${yearGroup}-low`;
-        const peakKey = `${yearGroup}-peak`;
+        // Map yearGroup to the correct sheet names/keys
+        const lowKey = yearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
+        const peakKey = yearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
         
         // Check if boxPlotData and the required keys exist
         if (!window.boxPlotData || !window.boxPlotData[lowKey] || !window.boxPlotData[peakKey]) {
-            console.warn(`Box plot data for year group '${yearGroup}' not found.`);
+            console.warn(`Box plot data for keys '${lowKey}' or '${peakKey}' not found in window.boxPlotData.`);
             // Return empty structure to prevent errors
              return [
                 { group: "Low", data: [] },
                 { group: "Peak", data: [] }
             ];
         }
-        
+
+        // Access data using the correct keys
+        const lowData = window.boxPlotData[lowKey];
+        const peakData = window.boxPlotData[peakKey];
+
+        // Check if the data itself has the expected structure (e.g., 'current' property)
+         if (!lowData || !peakData || typeof lowData !== 'object' || typeof peakData !== 'object') {
+             console.warn(`Data structure invalid for keys '${lowKey}' or '${peakKey}'.`);
+             return [ { group: "Low", data: [] }, { group: "Peak", data: [] } ];
+         }
+
+
         const lowStats = {
-            current: calculateStats(window.boxPlotData[lowKey].current || []),
-            baseline: calculateStats(window.boxPlotData[lowKey].baseline || []),
-            replant: calculateStats(window.boxPlotData[lowKey].replant || []),
-            urban: calculateStats(window.boxPlotData[lowKey].urban || [])
+            current: calculateStats(lowData?.current || []),
+            baseline: calculateStats(lowData?.baseline || []),
+            replant: calculateStats(lowData?.replant || []),
+            urban: calculateStats(lowData?.urban || [])
         };
         
         const peakStats = {
-            current: calculateStats(window.boxPlotData[peakKey].current || []),
-            baseline: calculateStats(window.boxPlotData[peakKey].baseline || []),
-            replant: calculateStats(window.boxPlotData[peakKey].replant || []),
-            urban: calculateStats(window.boxPlotData[peakKey].urban || [])
+            current: calculateStats(peakData?.current || []),
+            baseline: calculateStats(peakData?.baseline || []),
+            replant: calculateStats(peakData?.replant || []),
+            urban: calculateStats(peakData?.urban || [])
         };
         
         const mapData = (stats, type) => ([
@@ -730,16 +750,22 @@
         // Check for data on mount and when year group changes
         React.useEffect(() => {
             const checkData = () => {
-                const lowKey = `${selectedYearGroup}-low`;
-                const peakKey = `${selectedYearGroup}-peak`;
+                const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
+                const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
+                
                 const dataAvailable = window.boxPlotData && 
                                     window.boxPlotData[lowKey] && 
                                     window.boxPlotData[peakKey] &&
-                                    window.boxPlotData[lowKey].current && // Check deeper
-                                    window.boxPlotData[lowKey].current.length > 0;
+                                    // Check deeper structure - ensure data was parsed correctly
+                                    Array.isArray(window.boxPlotData[lowKey]) && window.boxPlotData[lowKey].length > 0 &&
+                                    Array.isArray(window.boxPlotData[peakKey]) && window.boxPlotData[peakKey].length > 0; 
+                                    // Note: We calculate stats later, so just check if arrays exist and aren't empty
+                                    
                 setIsDataReady(!!dataAvailable);
                 if (!dataAvailable) {
-                    console.warn(`Distribution data for ${selectedYearGroup} is not ready or incomplete.`);
+                     console.warn(`Distribution data for keys '${lowKey}' or '${peakKey}' is not ready or incomplete.`);
+                } else {
+                     console.log(`Distribution data for keys '${lowKey}' and '${peakKey}' appears ready.`);
                 }
             };
             checkData();
@@ -775,6 +801,23 @@
         
         // Display loading or error message if data isn't ready
         if (!isDataReady) {
+             // Check which specific sheets/keys might be missing based on the selected group
+             const missingKeys = [];
+             const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
+             const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
+             
+             if (!window.boxPlotData || !window.boxPlotData[lowKey] || !Array.isArray(window.boxPlotData[lowKey]) || window.boxPlotData[lowKey].length === 0) {
+                 missingKeys.push(`'${lowKey}'`);
+             }
+             if (!window.boxPlotData || !window.boxPlotData[peakKey] || !Array.isArray(window.boxPlotData[peakKey]) || window.boxPlotData[peakKey].length === 0) {
+                 missingKeys.push(`'${peakKey}'`);
+             }
+
+             let message = `Loading data or data unavailable for the ${selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} period...`;
+             if (missingKeys.length > 0) {
+                 message = `Data unavailable. Please ensure the 'uncertainty.xlsx' file contains valid data in the sheet(s): ${missingKeys.join(' and ')}. Check console for details.`;
+             }
+
              return (
                 <div>
                     <h2 className="text-xl font-semibold text-gray-800 mb-1">Distribution Analysis</h2>
@@ -803,8 +846,7 @@
                         </button>
                     </div>
                     <div className="p-4 bg-red-50 text-red-700 rounded-lg my-4">
-                        Unable to display charts. Data for {selectedYearGroup === '2yr' ? '2-year' : '200-year'} return period is not available.
-                        Check that the Excel file contains the required sheets and data.
+                        {message}
                     </div>
                 </div>
             );
