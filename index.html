@@ -547,27 +547,32 @@
                 if (tabId !== 'trends' && trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; console.log("Destroyed Trend Chart instance."); }
 
                 // Initialize/Mount based on the NOW ACTIVE tab
-                // Get the specific canvas element for the newly activated tab
+                const activeContent = document.getElementById(tabId); // Get the active tab content div
+                if (!activeContent) {
+                    console.error(`Could not find active content element for tab ID: ${tabId}`);
+                    return; // Stop if the content container isn't found
+                }
+
                 if (tabId === 'raw') {
-                    const canvasElement = document.getElementById('rawChart');
+                    const canvasElement = activeContent.querySelector('#rawChart'); // Find canvas *within* active content
                     if (canvasElement) {
-                        initializeRawChart();
+                        initializeRawChart(canvasElement); // Pass the canvas element
                     } else {
-                        console.warn("Canvas element 'rawChart' not found after tab activation.");
+                        console.warn("Canvas element 'rawChart' not found within the active tab content.");
                     }
                 } else if (tabId === 'percentage') {
-                    const canvasElement = document.getElementById('percentageChart');
+                    const canvasElement = activeContent.querySelector('#percentageChart'); // Find canvas *within* active content
                     if (canvasElement) {
-                        initializePercentageChart();
+                        initializePercentageChart(canvasElement); // Pass the canvas element
                     } else {
-                        console.warn("Canvas element 'percentageChart' not found after tab activation.");
+                        console.warn("Canvas element 'percentageChart' not found within the active tab content.");
                     }
                 } else if (tabId === 'trends') {
-                    const canvasElement = document.getElementById('trendChart');
+                    const canvasElement = activeContent.querySelector('#trendChart'); // Find canvas *within* active content
                     if (canvasElement) {
-                        initializeTrendChart();
+                        initializeTrendChart(canvasElement); // Pass the canvas element
                     } else {
-                        console.warn("Canvas element 'trendChart' not found after tab activation.");
+                        console.warn("Canvas element 'trendChart' not found within the active tab content.");
                     }
                 } else if (tabId === 'distribution') {
                     // Mount React component only if not already mounted
@@ -596,20 +601,27 @@
         });
         
         // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
-        // Ensure the raw tab is actually active before initializing
-        if (document.getElementById('tab-raw').classList.contains('active')) {
-             // Add a slightly longer delay for initial load
-             setTimeout(() => {
-                console.log("Attempting initial Raw Chart initialization after delay.");
-                const canvasElement = document.getElementById('rawChart');
-                if (canvasElement) {
-                    initializeRawChart(); // This function now checks for data availability
-                } else {
-                    console.warn("Canvas element 'rawChart' not found during initial load.");
-                }
-             }, 150); // Delay to ensure canvas is rendered
+        const initialActiveTabLink = document.querySelector('.tab-link.active');
+        if (initialActiveTabLink) {
+            const initialTabId = initialActiveTabLink.id.replace('tab-', '');
+            const initialActiveContent = document.getElementById(initialTabId);
+
+            if (initialActiveContent && initialTabId === 'raw') {
+                 // Add a slightly longer delay for initial load
+                 setTimeout(() => {
+                    console.log("Attempting initial Raw Chart initialization after delay.");
+                    const canvasElement = initialActiveContent.querySelector('#rawChart'); // Find canvas within initial active tab
+                    if (canvasElement) {
+                        initializeRawChart(canvasElement); // Pass the canvas element
+                    } else {
+                        console.warn("Canvas element 'rawChart' not found during initial load within the active tab.");
+                    }
+                 }, 150); // Delay to ensure canvas is rendered
+            } else {
+                console.log(`Initial load: Default active tab is '${initialTabId}', not 'raw'.`);
+            }
         } else {
-            console.log("Initial load: Raw tab is not the default active tab.");
+             console.warn("Initial load: Could not find default active tab link.");
         }
         
       }).catch(error => {
@@ -618,18 +630,18 @@
       
     }); // End DOMContentLoaded
 
-    // --- Chart.js Initialization Functions ---
+    // --- Chart.js Initialization Functions (now accept canvasElement) ---
     
-    function initializeRawChart() {
+    function initializeRawChart(canvasElement) {
         console.log("Attempting to initialize Raw Chart...");
-        const canvasElement = document.getElementById('rawChart');
+        // Canvas element is now passed as an argument
         if (!canvasElement) {
-             console.warn("initializeRawChart: Canvas element 'rawChart' not found.");
-             if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; } // Clean up if instance exists but canvas doesn't
+             console.warn("initializeRawChart: Received null canvas element.");
+             if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; }
              return;
         }
         
-        // Check if an instance already exists for this canvas
+        // Check if an instance already exists for this specific canvas
         if (rawChartInstance && rawChartInstance.canvas === canvasElement) {
             console.log("Raw Chart instance already exists for this canvas.");
             return; // Don't re-initialize if already present
@@ -696,11 +708,10 @@
         }
     }
 
-    function initializePercentageChart() {
+    function initializePercentageChart(canvasElement) {
         console.log("Attempting to initialize Percentage Chart...");
-        const canvasElement = document.getElementById('percentageChart');
          if (!canvasElement) {
-            console.warn("initializePercentageChart: Canvas element 'percentageChart' not found.");
+            console.warn("initializePercentageChart: Received null canvas element.");
              if (percentageChartInstance) { percentageChartInstance.destroy(); percentageChartInstance = null; }
             return; 
         }
@@ -775,11 +786,10 @@
         }
     }
 
-    function initializeTrendChart() {
+    function initializeTrendChart(canvasElement) {
         console.log("Attempting to initialize Trend Chart...");
-        const canvasElement = document.getElementById('trendChart');
         if (!canvasElement) {
-            console.warn("initializeTrendChart: Canvas element 'trendChart' not found.");
+            console.warn("initializeTrendChart: Received null canvas element.");
              if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
             return;
         }
@@ -1204,7 +1214,7 @@
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
                                     <YAxis 
-                                        domain={yAxisRangeLow} /* Use specific range for Low */
+                                        domain={yAxisRangeLow} // Use specific range for Low chart
                                         label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 }, dx:-15 }} // Adjusted dx
                                         tick={{ fontSize: 10 }}
                                         tickFormatter={(val) => val.toFixed(1)}
@@ -1263,7 +1273,7 @@
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
                                     <YAxis 
-                                        domain={yAxisRangePeak} /* Use specific range for Peak */
+                                        domain={yAxisRangePeak} // Use specific range for Peak chart
                                         label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 }, dx:-15 }} // Adjusted dx
                                         tick={{ fontSize: 10 }}
                                         tickFormatter={(val) => val.toFixed(1)}
