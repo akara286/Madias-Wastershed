@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Dashboard</title>
+  <title>Madias Creek Hydrologic Model & Uncertainty Dashboard</title>
   
   <!-- Chart.js (for Raw, Percentage, Trend tabs) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -61,7 +61,7 @@
     .header {
       background: linear-gradient(135deg, #0d47a1, #1976d2, #2196f3);
       color: white;
-      padding: 3rem 1rem;
+      padding: 2rem 1rem;
       text-align: center;
       box-shadow: var(--shadow-md);
       position: relative;
@@ -83,7 +83,7 @@
       margin-bottom: 0.5rem;
       font-weight: 700;
       letter-spacing: -0.5px;
-      font-size: 2.6rem;
+      font-size: 2.2rem;
       text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
@@ -91,7 +91,7 @@
       max-width: 800px;
       margin: 0 auto;
       opacity: 0.9;
-      font-size: 1.15rem;
+      font-size: 1rem;
       font-weight: 300;
     }
     
@@ -435,11 +435,11 @@
 <body>
   <header class="header">
     <div class="container">
-      <h1>Max Outflow Uncertainty Dashboard</h1>
+      <h1>Madias Creek Hydrologic Model & Uncertainty Dashboard</h1>
       <p>
-        This dashboard visualizes how future climate and land-use scenarios could affect peak water outflow compared to today. 
-        It compares current conditions to projections for the year 2050 under different scenarios (baseline climate, increased urban development, and replanting of vegetation) 
-        across both moderate and extreme rainfall events.
+        This dashboard visualizes how climate and land-use scenarios affect peak water outflow in Madias Creek, BC. 
+        The model compares current conditions to 2050 projections under different scenarios: baseline climate change, 
+        increased urban development, and replanting/restoration efforts across both moderate (2-year) and extreme (200-year) rainfall events.
       </p>
     </div>
   </header>
@@ -462,19 +462,17 @@
     <!-- Raw Outflow Tab (Chart.js) -->
     <div id="raw" class="tab-content active">
       <h2>Raw Max Outflow Comparison</h2>
-      <p class="subtitle">Average values across 100 samples for each return period</p>
+      <p class="subtitle">Madias Creek Flow Analysis (100 Sample Average)</p>
       
       <div class="plot-description">
-        The bar chart below shows the projected <b>maximum outflow</b> (peak water flow rate, in cubic meters per second) for two types of storm events 
-        under several scenarios:
+        The bar chart below shows the projected <b>maximum outflow</b> (peak water flow rate, in cubic meters per second) for Madias Creek, which flows through the ʔakisq̓nuk First Nation territory into Windermere Lake in southeastern British Columbia. Four modeling scenarios are compared:
         <ul>
-          <li><b>Current (2020):</b> Current climate and land-use conditions.</li>
-          <li><b>2050 Baseline:</b> Year 2050 climate under baseline conditions (no special intervention).</li>
-          <li><b>Urban Development:</b> 2050 scenario with significant urban growth (more paved surfaces, increasing runoff).</li>
-          <li><b>Replanting:</b> 2050 scenario with reforestation/revegetation efforts (more permeable land, reducing runoff).</li>
+          <li><b>Current (2020):</b> Current climate and land-use conditions in the Madias Creek watershed.</li>
+          <li><b>2050 Baseline:</b> Year 2050 climate projection under baseline conditions (climate change only).</li>
+          <li><b>Urban Development:</b> 2050 scenario with increased urban encroachment into floodplains (more impervious surfaces).</li>
+          <li><b>Replanting:</b> 2050 scenario with ʔakisq̓nuk-led reforestation and wetland restoration projects.</li>
         </ul>
-        Each scenario is evaluated for a relatively frequent <b>2-year storm</b> and a rare <b>200-year storm</b>, 
-        under both a <i>low-impact</i> climate case and a <i>high-impact</i> (peak climate change) case.
+        Each scenario is evaluated for both <b>2-year</b> (common) and <b>200-year</b> (rare) return period events, under both <i>low-impact</i> and <i>high-impact</i> (peak) climate cases. Note the significant increase in flow rate for extreme events.
       </div>
       
       <p class="data-source-note">Source: Summary values representing multiple return periods</p>
@@ -486,15 +484,19 @@
     
     <!-- Distribution Analysis Tab (React/Recharts) -->
     <div id="distribution" class="tab-content">
-      <h2>Distribution Analysis</h2>
-      <p class="subtitle">Statistical distribution across 100 samples</p>
+      <h2>Madias Creek Uncertainty Analysis</h2>
+      <p class="subtitle">Statistical Distribution of Model Results (100 Runs)</p>
       
       <div class="plot-description">
-        This visualization illustrates the <b>uncertainty</b> in the model simulations for different scenarios. 
-        Each scenario (Current, 2050 Baseline, Urban, Replant) shows results from 100 simulation runs. 
-        The charts display the statistical distribution (min, max, quartiles, median, average) of outflow values 
-        for both low and peak events, helping to understand not just the average effects but the range of 
-        possible outcomes under different climate and land-use scenarios.
+        This visualization quantifies the <b>uncertainty</b> in our hydrologic model simulations for Madias Creek. Using LiDAR-derived elevation data and HEC-HMS modeling, we ran 100 simulations for each scenario to account for variability in:
+        
+        <ul>
+          <li>Precipitation patterns (using data from Kootenay West Gate & Windermere Gauge Station)</li>
+          <li>Soil infiltration rates across the watershed's diverse terrain</li>
+          <li>Land cover changes under different management scenarios</li>
+        </ul>
+        
+        The box plots show statistical distributions of outflow values, with each scenario's spread representing model uncertainty. The Current scenario shows the narrowest range, while future projections show wider spreads due to climate uncertainty. This analysis helps ʔakisq̓nuk First Nation and RDEK planners understand not just average effects but the full range of possible outcomes for flood management decisions.
       </div>
       
       <p class="data-source-note">Source: Full 100 samples from the uncertainty model runs</p>
@@ -506,14 +508,20 @@
     <!-- Percentage Change Tab (Chart.js) -->
     <div id="percentage" class="tab-content">
       <h2>Percentage Change from 2050 Baseline</h2>
-      <p class="subtitle">Calculated from average values across 100 samples</p>
+      <p class="subtitle">Madias Creek Management Impact Assessment</p>
       
       <div class="plot-description">
-        This chart shows how the <b>Urban</b> and <b>Replanting</b> scenarios differ from the 2050 Baseline in terms of peak outflow, for each event type. 
-        The values are percentages relative to the baseline scenario (the baseline is zero reference). 
+        This chart shows how the <b>Urban</b> and <b>Replanting</b> scenarios for Madias Creek differ from the 2050 Baseline climate projection. 
+        Values are percentages relative to the baseline scenario (zero reference). 
         Positive percentages (red bars) indicate higher outflow than the baseline, while negative percentages (teal bars) indicate lower outflow. 
-        You can see that the Urban development scenario results in a slight increase in peak flows, whereas the Replanting scenario leads to a few percent reduction in flows. 
-        The effect of replanting is most pronounced for the smaller 2-year storm and diminishes for the 200-year event.
+        
+        <ul>
+          <li>The Urban development scenario shows slight increases in peak flows (0.1-0.4%) due to increased impervious surfaces near the Highway 93/95 crossing.</li>
+          <li>The ʔakisq̓nuk-led Replanting initiatives show meaningful reductions (1-5%) in outflow, with nature-based solutions proving most effective for smaller storm events.</li>
+          <li>For 200-year extreme events, the mitigation impact of replanting is reduced but still meaningful (approximately 1% reduction).</li>
+        </ul>
+        
+        These patterns align with the Regional District of East Kootenay (RDEK) flood management objectives and the BC Flood Strategy (2023).
       </div>
       
       <p class="data-source-note">Source: Calculated from summary values representing multiple return periods</p>
@@ -525,15 +533,20 @@
     
     <!-- Trend Analysis Tab (Chart.js) -->
     <div id="trends" class="tab-content">
-      <h2>Trend Analysis: Scenario Changes Across Events</h2>
-      <p class="subtitle">Showing percentage change from current conditions (based on averages)</p>
+      <h2>Trend Analysis: Madias Creek Climate Resilience</h2>
+      <p class="subtitle">Comparison to Current Conditions by Return Period</p>
       
       <div class="plot-description">
-        This visualization shows how the impact of different scenarios changes across rainfall event severities, using average values.
-        The chart displays percentage changes relative to current conditions, highlighting how climate change and land use 
-        strategies affect water outflows differently across event scales. For more extreme events (like the 200-year storm), 
-        the differences between scenarios are smaller, whereas for the 2-year storm, replanting yields a larger relative 
-        reduction in outflow and urbanization shows a slight increase.
+        This visualization shows how climate change and land management strategies affect Madias Creek outflows across different rainfall event severities. The chart displays percentage increases relative to current conditions, highlighting:
+        
+        <ul>
+          <li>The significant impact of climate change alone (baseline scenario) on all return periods, with a dramatic 38-40% increase for 200-year events.</li>
+          <li>Even with replanting initiatives, all future scenarios show substantially higher peak flows than current conditions.</li>
+          <li>The Urban scenario shows the highest increases, though the difference from baseline is minimal for extreme events.</li>
+          <li>The difference between scenarios diminishes for more extreme events, suggesting limits to mitigation strategies during 200-year events.</li>
+        </ul>
+        
+        This analysis supports ʔakisq̓nuk First Nation's focus on both mitigation (replanting) and adaptation (improved culverts at Highway 93/95) strategies, as identified in the watershed's vulnerability assessment.
       </div>
       
       <p class="data-source-note">Source: Calculated from summary values representing multiple return periods</p>
@@ -568,11 +581,7 @@
     </div>
   </main>
   
-  <footer class="footer">
-    <div class="container">
-      <p>Max Outflow Uncertainty Dashboard | Data from uncertainty.xlsx</p>
-    </div>
-  </footer>
+  <!-- Footer removed as requested -->
 
   <!-- Scroll to top button -->
   <button id="scrollTopBtn" style="position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #1976d2, #42a5f5); color: white; border: none; box-shadow: 0 3px 10px rgba(0,0,0,0.2); cursor: pointer; display: none; z-index: 1000; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;">
