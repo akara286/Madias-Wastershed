@@ -10,6 +10,23 @@ function ModernWaterDashboard() {
   const [chartHover, setChartHover] = useState(null);
   const [selectedYearGroup, setSelectedYearGroup] = useState('2yr'); // '2yr' or '200yr'
   const [comparisonMode, setComparisonMode] = useState('grouped'); // 'grouped' or 'stacked'
+  const [isMobile, setIsMobile] = useState(false); // Track if on mobile device
+  
+  // Detect mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Add resize listener
+    window.addEventListener('resize', checkMobile);
+    
+    // Clean up
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // State for chart zooming
   const [trendZoom, setTrendZoom] = useState({
@@ -132,7 +149,7 @@ function ModernWaterDashboard() {
             avg: lowStats.baseline.avg
           },
           { 
-            name: 'Replant', 
+            name: 'Replanting (2050)', 
             min: lowStats.replant.min,
             q1: lowStats.replant.q1,
             median: lowStats.replant.median,
@@ -141,7 +158,7 @@ function ModernWaterDashboard() {
             avg: lowStats.replant.avg
           },
           { 
-            name: 'Urban', 
+            name: 'Urban Development (2050)', 
             min: lowStats.urban.min,
             q1: lowStats.urban.q1,
             median: lowStats.urban.median,
@@ -173,7 +190,7 @@ function ModernWaterDashboard() {
             avg: peakStats.baseline.avg
           },
           { 
-            name: 'Replant', 
+            name: 'Replanting (2050)', 
             min: peakStats.replant.min,
             q1: peakStats.replant.q1,
             median: peakStats.replant.median,
@@ -182,7 +199,7 @@ function ModernWaterDashboard() {
             avg: peakStats.replant.avg
           },
           { 
-            name: 'Urban', 
+            name: 'Urban Development (2050)', 
             min: peakStats.urban.min,
             q1: peakStats.urban.q1,
             median: peakStats.urban.median,
@@ -204,12 +221,19 @@ function ModernWaterDashboard() {
       const entry = payload[0];
       const bgColor = entry.color + '10'; // Add slight transparency to the background color
       
+      // Calculate max width based on device orientation and screen size
+      const isPortrait = window.innerHeight > window.innerWidth;
+      const screenWidth = window.innerWidth;
+      const maxWidth = screenWidth < 480 ? '260px' : '280px';
+      
       return (
-        <div className="bg-white bg-opacity-90 backdrop-filter backdrop-blur-md p-4 rounded-lg shadow-lg border border-gray-100" 
+        <div className="bg-white bg-opacity-90 backdrop-filter backdrop-blur-md p-3 sm:p-4 rounded-lg shadow-lg border border-gray-100" 
           style={{ 
-            minWidth: '220px', 
+            maxWidth: maxWidth,
+            width: screenWidth < 380 ? '80%' : 'auto',
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-            borderLeft: `4px solid ${entry.color}`
+            borderLeft: `4px solid ${entry.color}`,
+            fontSize: screenWidth < 380 ? '0.85rem' : 'inherit'
           }}>
           <div className="font-semibold text-gray-800 text-base mb-2 pb-2 border-b border-gray-100">{label}</div>
           <div style={{ color: entry.color }} className="text-base font-medium flex items-center">
@@ -277,7 +301,7 @@ function ModernWaterDashboard() {
       </header>
       
       {/* Modern Main Content with Glass Container */}
-      <main className="max-w-6xl mx-auto py-6 px-4">
+      <main className="max-w-6xl mx-auto py-6 px-2 sm:px-4">
         {/* Modern Navigation Tabs with Icons */}
         <div className="flex flex-wrap mb-6 gap-2 border-b border-gray-200 pb-2">
           <button 
@@ -341,7 +365,7 @@ function ModernWaterDashboard() {
               </p>
             </div>
             
-            <div className="h-[450px]"> {/* Increased height for better visualization */}
+            <div className="h-[350px] sm:h-[400px] md:h-[450px]"> {/* Responsive height based on screen size */}
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={rawOutflowData}
@@ -380,7 +404,7 @@ function ModernWaterDashboard() {
                   />
                   <Bar 
                     dataKey="Baseline" 
-                    name="2050 Baseline (ViT)" 
+                    name="2050 Baseline" 
                     fill="#f59e0b" 
                     radius={[4, 4, 0, 0]} 
                     isAnimationActive={true} 
@@ -388,7 +412,7 @@ function ModernWaterDashboard() {
                   />
                   <Bar 
                     dataKey="Replant" 
-                    name="Replanting Efforts" 
+                    name="Replanting (2050)" 
                     fill="#0ea5e9" 
                     radius={[4, 4, 0, 0]} 
                     isAnimationActive={true} 
@@ -396,7 +420,7 @@ function ModernWaterDashboard() {
                   />
                   <Bar 
                     dataKey="Urban" 
-                    name="Urban Development" 
+                    name="Urban Development (2050)" 
                     fill="#ef4444" 
                     radius={[4, 4, 0, 0]} 
                     isAnimationActive={true} 
@@ -407,7 +431,7 @@ function ModernWaterDashboard() {
             </div>
             
             {/* Insight Cards */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <div className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-white rounded-lg shadow-sm border border-blue-100 p-4 transition-transform duration-300 hover:shadow-md hover:translate-y-[-2px]">
                 <div className="absolute top-0 right-0 bg-blue-100 text-blue-700 px-2 py-1 text-xs font-medium rounded-bl-lg">KEY INSIGHT</div>
                 <h3 className="text-sm font-semibold text-blue-700 mt-2">Replanting Effectiveness</h3>
@@ -506,11 +530,11 @@ function ModernWaterDashboard() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {/* Low Event Chart */}
               <div>
                 <h3 className="text-md font-medium text-center mb-1 text-gray-700">Low Events</h3>
-                <div className="h-80">
+                <div className="h-64 sm:h-72 md:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={areaDistributionData[0].data}
@@ -799,7 +823,7 @@ function ModernWaterDashboard() {
               </p>
             </div>
             
-            <div className="h-[450px]"> {/* Increased height for better visualization */}
+            <div className="h-[350px] sm:h-[400px] md:h-[450px]"> {/* Responsive height based on screen size */}
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={percentageChangeData}
@@ -850,7 +874,7 @@ function ModernWaterDashboard() {
               </p>
             </div>
             
-            <div className="h-[450px]"> {/* Increased height for better visualization */}
+            <div className="h-[350px] sm:h-[400px] md:h-[450px]"> {/* Responsive height based on screen size */}
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={trendData}
@@ -953,7 +977,7 @@ function ModernWaterDashboard() {
                   <Line 
                     type="monotone" 
                     dataKey="Urban" 
-                    name="Urban Development"
+                    name="Urban Development (2050)"
                     stroke="#dc3545" 
                     dot={{ r: 6, strokeWidth: 2 }}
                     strokeWidth={3}
@@ -963,7 +987,7 @@ function ModernWaterDashboard() {
                   <Line 
                     type="monotone" 
                     dataKey="Replant" 
-                    name="Replanting Efforts"
+                    name="Replanting (2050)"
                     stroke="#17a2b8" 
                     dot={{ r: 6, strokeWidth: 2 }}
                     strokeWidth={3}
@@ -973,7 +997,7 @@ function ModernWaterDashboard() {
                   <Line 
                     type="monotone" 
                     dataKey="Baseline" 
-                    name="2050 Baseline (ViT)"
+                    name="2050 Baseline"
                     stroke="#fd7e14" 
                     dot={{ r: 6, strokeWidth: 2 }}
                     strokeWidth={3}
@@ -991,8 +1015,8 @@ function ModernWaterDashboard() {
                 <h3 className="font-semibold text-md mb-1 text-gray-800">Key Observations</h3>
                 <ul className="list-disc pl-6 space-y-2 text-sm text-gray-800">
                   <li>The impact of <span className="font-medium text-orange-600">climate change (2050 baseline)</span> increases with rainfall severity - up to <span className="font-medium">45%</span> higher outflow for 200-year events.</li>
-                  <li><span className="font-medium text-teal-600">Replanting efforts</span> are most effective at reducing outflow during smaller events (2-year return periods).</li>
-                  <li><span className="font-medium text-red-600">Urban development</span> shows minimal additional impact at extreme events (200-year peak).</li>
+                  <li><span className="font-medium text-teal-600">Replanting (2050)</span> are most effective at reducing outflow during smaller events (2-year return periods).</li>
+                  <li><span className="font-medium text-red-600">Urban development (2050)</span> shows minimal additional impact at extreme events (200-year peak).</li>
                   <li>All future scenarios converge at extreme events, suggesting limited mitigation options for the most severe rainfall scenarios.</li>
                 </ul>
               </div>

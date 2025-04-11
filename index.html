@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Madias Creek Watershed ʔakisq̓nuk Territory Hydrologic Assessment</title>
   
   <!-- Chart.js (for Raw, Percentage, Trend tabs) -->
@@ -29,6 +29,12 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   
   <style>
+    /* Mobile optimization settings */
+    html {
+      touch-action: manipulation; /* Prevents delay on touch devices */
+      -webkit-text-size-adjust: 100%; /* Prevents iOS text size adjustment */
+    }
+    
     /* Define CSS variables for consistent theming */
     :root {
       --primary-color: #2563eb;          /* Blue (2025 scenario) */
@@ -323,10 +329,107 @@
       opacity: 0.9;
     }
     
+    /* Touch device optimizations */
+    .touch-active {
+      opacity: 0.7;
+      transform: scale(0.98);
+    }
+    
+    @media (hover: none) {
+      .tab-link:hover:not(.active),
+      .card:hover,
+      .chart-container:hover,
+      .info-box:hover {
+        transform: none;
+        box-shadow: inherit;
+      }
+      
+      /* Make scroll button bigger on touch devices */
+      #scrollTopBtn {
+        width: 56px;
+        height: 56px;
+      }
+    }
+    
     .grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 1.25rem;
+    }
+    
+    /* Enhanced mobile responsiveness */
+    @media (max-width: 480px) {
+      .container {
+        padding: 0.75rem;
+        margin: 0.75rem auto;
+      }
+      
+      h2 {
+        font-size: 1.2rem;
+      }
+      
+      h3 {
+        font-size: 1rem;
+      }
+      
+      .chart-container {
+        padding: 0.75rem;
+        height: 350px !important; /* Optimize chart height for mobile */
+      }
+      
+      .tab-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+        flex: 1 1 auto;
+        margin-right: 0.25rem;
+        white-space: nowrap;
+      }
+      
+      .tab-links {
+        overflow-x: auto; /* Allow horizontal scrolling if needed */
+        scrollbar-width: none; /* Hide scrollbar - Firefox */
+      }
+      
+      .tab-links::-webkit-scrollbar {
+        display: none; /* Hide scrollbar - Chrome/Safari/Opera */
+      }
+      
+      /* Increase touch target size */
+      button, .tab-link, #scrollTopBtn {
+        min-height: 44px;
+        min-width: 44px;
+      }
+      
+      table th, table td {
+        padding: 0.5rem;
+        font-size: 0.7rem;
+      }
+      
+      .plot-description {
+        font-size: 0.75rem;
+        padding: 0.75rem;
+      }
+      
+      .zoom-controls button {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.7rem;
+      }
+    }
+    
+    @media (min-width: 481px) and (max-width: 767px) {
+      .container {
+        padding: 1rem;
+      }
+      
+      .chart-container {
+        padding: 1rem;
+        height: 400px !important;
+      }
+      
+      table th, table td {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.75rem;
+      }
     }
     
     @media (min-width: 768px) {
@@ -653,13 +756,17 @@
       </div>
       
       <div class="plot-description">
-        This visualization shows how climate change and land management strategies affect Madias Creek outflows across different rainfall event severities. The chart displays percentage increases relative to current conditions, highlighting:
+        This visualization shows how climate change and land management strategies affect Madias Creek outflows across different rainfall event severities. The charts display percentage increases relative to baseline conditions for both Low and Peak events separately.
+        
+        <div style="background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 10px; margin: 15px 0; font-size: 0.85em; max-width: 100%; overflow-wrap: break-word;">
+          <strong>Important Note on Percentage Changes:</strong> Each event type (Low and Peak) uses its own baseline value for calculating percentage change. Since Low event values are typically smaller than Peak values, the same absolute increase will result in a larger percentage change for Low events. This is why we've separated the visualizations to avoid misleading comparisons.
+        </div>
         
         <ul>
-          <li>The significant impact of climate change alone (baseline scenario) on all return periods, with a dramatic 38-40% increase for 200-year events.</li>
-          <li>Even with replanting initiatives, all future scenarios show substantially higher peak flows than current conditions.</li>
-          <li>The Urban scenario shows the highest increases, though the difference from baseline is minimal for extreme events.</li>
-          <li>The difference between scenarios diminishes for more extreme events, suggesting limits to mitigation strategies during 200-year events.</li>
+            <li>The significant impact of climate change alone (baseline scenario) on all return periods, with dramatic increases for 200-year events in both Low and Peak.</li>
+            <li>Even with replanting initiatives, all future scenarios show substantially higher outflows than current conditions.</li>
+            <li>The Urban scenario shows the highest increases above baseline, reflecting increased runoff from impervious surfaces.</li>
+            <li>In absolute terms, Peak events show greater increases than Low events, though percentage changes may appear different.</li>
         </ul>
         
         This analysis supports ʔakisq̓nuk First Nation's focus on both mitigation (replanting) and adaptation (improved culverts at Highway 93/95) strategies, as identified in the watershed's vulnerability assessment.
@@ -667,8 +774,19 @@
       
       <div class="data-source-note">Calculated from summary values representing multiple return periods</div>
       
-      <div class="chart-container">
-        <canvas id="trendChart"></canvas>
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="w-full md:w-1/2">
+          <h3 class="text-lg font-medium text-center mb-2 text-gray-700">Low Events (% Change)</h3>
+          <div class="chart-container" style="height: 350px; min-height: 300px;">
+            <canvas id="trendChartLow"></canvas>
+          </div>
+        </div>
+        <div class="w-full md:w-1/2">
+          <h3 class="text-lg font-medium text-center mb-2 text-gray-700">Peak Events (% Change)</h3>
+          <div class="chart-container" style="height: 350px; min-height: 300px;">
+            <canvas id="trendChartPeak"></canvas>
+          </div>
+        </div>
       </div>
       
       <hr class="section-divider">
@@ -677,10 +795,10 @@
         <div class="card">
           <h3>Key Observations (Based on Averages)</h3>
           <ul>
-            <li>The impact of <span class="font-semibold" style="color: #fd7e14;">climate change (2050 baseline)</span> increases with rainfall severity - showing significantly higher average outflow for 200-year events compared to current.</li>
-            <li><span class="font-semibold" style="color: #17a2b8;">Replanting efforts</span> appear most effective at reducing average outflow during smaller events (2-year return periods).</li>
-            <li><span class="font-semibold" style="color: #dc3545;">Urban development</span> generally increases average outflow, with potentially less *additional* impact relative to baseline at extreme events.</li>
-            <li>All future scenarios show higher average outflow than current conditions, especially for extreme events.</li>
+            <li>When comparing <span class="font-semibold">Low Events</span> and <span class="font-semibold">Peak Events</span> separately, we see that both show significant increases under climate change (2050 baseline).</li>
+            <li><span class="font-semibold" style="color: #17a2b8;">Replanting (2050)</span> appears most effective at reducing both low and peak outflows during smaller events (2-year return periods).</li>
+            <li><span class="font-semibold" style="color: #dc3545;">Urban development (2050)</span> generally increases outflow across all event types when compared to the 2050 baseline.</li>
+            <li>While percentage changes may differ between low and peak events (due to different baseline values), all future scenarios show substantially higher absolute outflow values than current conditions.</li>
           </ul>
         </div>
         
@@ -714,6 +832,34 @@
   </footer>
   
   <script>
+    // Mobile touch handling improvements
+    document.addEventListener('DOMContentLoaded', function() {
+      // Add active states for touch devices
+      const addTouchActiveState = function(elements) {
+        if (!elements) return;
+        
+        elements.forEach(el => {
+          el.addEventListener('touchstart', function() {
+            this.classList.add('touch-active');
+          }, {passive: true});
+          
+          el.addEventListener('touchend', function() {
+            this.classList.remove('touch-active');
+          }, {passive: true});
+          
+          el.addEventListener('touchcancel', function() {
+            this.classList.remove('touch-active');
+          }, {passive: true});
+        });
+      };
+      
+      // Apply to interactive elements
+      addTouchActiveState(document.querySelectorAll('button, .tab-link'));
+      
+      // Fix 300ms delay on mobile
+      document.addEventListener('touchstart', function() {}, {passive: true});
+    });
+    
     // Initialize data containers - will be filled from Excel
     window.rawOutflowData = []; // Will hold SUMMARY data for bar chart
     window.percentageChangeData = []; // Will hold SUMMARY data for bar chart
@@ -1092,12 +1238,8 @@
                         console.warn("Canvas element 'percentageChart' not found within the active tab content.");
                     }
                 } else if (tabId === 'trends') {
-                    const canvasElement = activeContent.querySelector('#trendChart'); // Find canvas *within* active content
-                    if (canvasElement) {
-                        initializeTrendChart(canvasElement); // Pass the canvas element
-                    } else {
-                        console.warn("Canvas element 'trendChart' not found within the active tab content.");
-                    }
+                    // The initializeTrendChart function now handles both Low and Peak charts
+                    initializeTrendChart(null);
                 } else if (tabId === 'distribution') {
                     // Mount React component only if not already mounted
                     if (!reactComponentMounted) {
@@ -1156,9 +1298,25 @@
 
     // --- Chart.js Initialization Functions (now accept canvasElement) ---
     
+    // Detect if we're on a mobile device
+    function isMobileDevice() {
+      return (window.innerWidth <= 768) || 
+             ('ontouchstart' in window) || 
+             (navigator.maxTouchPoints > 0) || 
+             (navigator.msMaxTouchPoints > 0);
+    }
+    
     // Add global chart styling for consistent visuals
     Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
-    Chart.defaults.font.size = 12;
+    
+    // Set font size based on device type
+    if (isMobileDevice()) {
+      Chart.defaults.font.size = 10; // Smaller font on mobile
+      Chart.defaults.plugins.legend.labels.boxWidth = 10; // Smaller legend markers
+      Chart.defaults.plugins.legend.labels.padding = 6; // Smaller padding
+    } else {
+      Chart.defaults.font.size = 12;
+    }
     Chart.defaults.color = '#495057';
     Chart.defaults.elements.line.tension = 0.2;
     Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(255, 255, 255, 0.95)';
@@ -1287,20 +1445,35 @@
             rawChartInstance = new Chart(rawCtx, {
                 type: 'bar',
                 data: {
-                labels: window.rawOutflowData.map(d => d.category),
+                labels: window.rawOutflowData.map(d => d.category.replace(' Avg', '')), // Shorter labels for mobile
                 datasets: [
                     { label: '2025 Baseline', data: window.rawOutflowData.map(d => d.Current), backgroundColor: '#0056b3', borderRadius: 4 },
-                    { label: '2050 Baseline (ViT)', data: window.rawOutflowData.map(d => d.Baseline), backgroundColor: '#fd7e14', borderRadius: 4 },
-                    { label: 'Replanting Efforts', data: window.rawOutflowData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 },
-                    { label: 'Urban Development', data: window.rawOutflowData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 }
+                    { label: '2050 Baseline', data: window.rawOutflowData.map(d => d.Baseline), backgroundColor: '#fd7e14', borderRadius: 4 },
+                    { label: 'Replanting (2050)', data: window.rawOutflowData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 },
+                    { label: 'Urban Development (2050)', data: window.rawOutflowData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 }
                 ]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false,
                     animation: {
-                        duration: 1500,
+                        duration: isMobileDevice() ? 1000 : 1500, // Shorter animation on mobile for better performance
                         easing: 'easeOutQuart'
+                    },
+                    // Mobile optimization
+                    onResize: function(chart, size) {
+                        if (size.width < 500) {
+                            chart.options.scales.x.ticks.maxRotation = 45;
+                            chart.options.scales.x.ticks.minRotation = 45;
+                            // Adjust label display for small screens
+                            chart.options.plugins.legend.position = 'bottom';
+                            chart.options.plugins.legend.labels.boxWidth = 8;
+                            chart.options.plugins.legend.labels.padding = 6;
+                        } else {
+                            chart.options.scales.x.ticks.maxRotation = 45;
+                            chart.options.scales.x.ticks.minRotation = 30;
+                            chart.options.plugins.legend.position = 'bottom';
+                        }
                     },
                     scales: { 
                         x: {
@@ -1444,40 +1617,46 @@
     }
 
     function initializeTrendChart(canvasElement) {
-        console.log("Attempting to initialize Trend Chart...");
+        console.log("Trend Chart functionality is now split into Low and Peak charts");
+        initializeTrendChartLow(document.getElementById('trendChartLow'));
+        initializeTrendChartPeak(document.getElementById('trendChartPeak'));
+    }
+    
+    // New function to initialize the Low events trend chart
+    function initializeTrendChartLow(canvasElement) {
+        console.log("Attempting to initialize Low Trend Chart...");
         if (!canvasElement) {
-            console.warn("initializeTrendChart: Received null canvas element.");
-             if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
+            console.warn("initializeTrendChartLow: Received null canvas element.");
             return;
         }
-         if (trendChartInstance && trendChartInstance.canvas === canvasElement) {
-            console.log("Trend Chart instance already exists.");
+        
+        let chartInstance = null;
+        const chartCtx = canvasElement.getContext('2d');
+        if (!chartCtx) {
+            console.warn("initializeTrendChartLow: Failed to get 2D context.");
             return;
         }
-        if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
-
-        const trendCtx = canvasElement.getContext('2d');
-         if (!trendCtx) {
-            console.warn("initializeTrendChart: Failed to get 2D context.");
-            return;
-        }
+        
         if (!window.trendData || window.trendData.length === 0) {
             console.warn("Trend summary data is not available or empty. Cannot initialize chart.");
-             trendCtx.clearRect(0, 0, trendCtx.canvas.width, trendCtx.canvas.height);
-            trendCtx.textAlign = 'center';
-            trendCtx.fillText('Summary data not available', trendCtx.canvas.width / 2, trendCtx.canvas.height / 2);
+            chartCtx.clearRect(0, 0, chartCtx.canvas.width, chartCtx.canvas.height);
+            chartCtx.textAlign = 'center';
+            chartCtx.fillText('Summary data not available', chartCtx.canvas.width / 2, chartCtx.canvas.height / 2);
             return;
         }
 
-        console.log("Initializing Trend Chart with summary data:", window.trendData);
+        console.log("Initializing Low Trend Chart");
 
         try {
-             // Determine min/max for y-axis dynamically, ensuring 0 is included
-            const allValues = window.trendData.flatMap(d => [d.Baseline, d.Replant, d.Urban]);
-            const dataMin = Math.min(0, ...allValues); // Include 0
-            const dataMax = Math.max(0, ...allValues); // Include 0
-            const yMin = Math.floor(dataMin - Math.abs(dataMin * 0.1)); // Add 10% padding below min
-            const yMax = Math.ceil(dataMax + Math.abs(dataMax * 0.1)); // Add 10% padding above max
+            // Filter data to only include Low events
+            const lowEventData = window.trendData.filter(d => d.name.toLowerCase().includes('low'));
+            
+            // Determine min/max for y-axis dynamically
+            const allLowValues = lowEventData.flatMap(d => [d.Baseline, d.Replant, d.Urban]);
+            const dataMin = Math.min(0, ...allLowValues);
+            const dataMax = Math.max(0, ...allLowValues);
+            const yMin = Math.floor(dataMin - Math.abs(dataMin * 0.1));
+            const yMax = Math.ceil(dataMax + Math.abs(dataMax * 0.1));
 
             // Add zoom controls
             const container = canvasElement.closest('.chart-container');
@@ -1487,14 +1666,10 @@
                 zoomControls.style.display = 'flex';
                 zoomControls.style.justifyContent = 'center';
                 zoomControls.style.alignItems = 'center';
-                zoomControls.style.marginTop = '1rem';
+                zoomControls.style.marginTop = '0.5rem';
                 
                 zoomControls.innerHTML = `
-                    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 0.5rem; font-size: 0.75rem; color: #666;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.3rem;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                        Drag to zoom, scroll to pan
-                    </div>
-                    <button id="resetZoomBtn" style="font-size: 0.75rem; background: #f0f0f0; border: 1px solid #ddd; padding: 0.25rem 0.5rem; border-radius: 3px; cursor: pointer; display: flex; align-items: center;">
+                    <button id="resetZoomBtnLow" style="font-size: 0.75rem; background: #f0f0f0; border: 1px solid #ddd; padding: 0.25rem 0.5rem; border-radius: 3px; cursor: pointer; display: flex; align-items: center;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.3rem;"><path d="M3 2v6h6"></path><path d="M21 12A9 9 0 0 0 6 5.3L3 8"></path><path d="M21 22v-6h-6"></path><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"></path></svg>
                         Reset Zoom
                     </button>
@@ -1503,30 +1678,44 @@
                 container.appendChild(zoomControls);
                 
                 // Add click handler for reset button
-                const resetBtn = container.querySelector('#resetZoomBtn');
+                const resetBtn = container.querySelector('#resetZoomBtnLow');
                 if (resetBtn) {
                     resetBtn.addEventListener('click', function() {
-                        if (trendChartInstance && trendChartInstance.resetZoom) {
-                            trendChartInstance.resetZoom();
+                        if (chartInstance && chartInstance.resetZoom) {
+                            chartInstance.resetZoom();
                         }
                     });
                 }
             }
             
-            trendChartInstance = new Chart(trendCtx, {
+            chartInstance = new Chart(chartCtx, {
                 type: 'line',
                 data: {
-                labels: window.trendData.map(d => d.name),
-                datasets: [
-                    // Only plot Baseline, Replant, Urban (remove Current Conditions as requested)
-                    { label: '2050 Baseline (ViT)', data: window.trendData.map(d => d.Baseline), borderColor: '#fd7e14', backgroundColor: '#fd7e14', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
-                    { label: 'Replanting Efforts', data: window.trendData.map(d => d.Replant), borderColor: '#17a2b8', backgroundColor: '#17a2b8', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
-                    { label: 'Urban Development', data: window.trendData.map(d => d.Urban), borderColor: '#dc3545', backgroundColor: '#dc3545', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 }
-                ]
+                    labels: lowEventData.map(d => d.name.replace('Low Avg', '')), // Simplify labels
+                    datasets: [
+                        { label: '2050 Baseline', data: lowEventData.map(d => d.Baseline), borderColor: '#fd7e14', backgroundColor: '#fd7e14', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                        { label: 'Replanting (2050)', data: lowEventData.map(d => d.Replant), borderColor: '#17a2b8', backgroundColor: '#17a2b8', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                        { label: 'Urban Development (2050)', data: lowEventData.map(d => d.Urban), borderColor: '#dc3545', backgroundColor: '#dc3545', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 }
+                    ]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false,
+                    // Mobile optimizations
+                    onResize: function(chart, size) {
+                        // Adjust point and line sizes based on screen width
+                        const datasets = chart.data.datasets;
+                        const isMobile = size.width < 500;
+                        
+                        datasets.forEach(dataset => {
+                            dataset.pointRadius = isMobile ? 4 : 6;
+                            dataset.pointHoverRadius = isMobile ? 6 : 8;
+                            dataset.borderWidth = isMobile ? 2 : 3;
+                        });
+                        
+                        // Adjust legend display
+                        chart.options.plugins.legend.display = size.width > 380;
+                    },
                     plugins: {
                         zoom: {
                             limits: {
@@ -1535,6 +1724,8 @@
                             pan: {
                                 enabled: true,
                                 mode: 'xy',
+                                // Mobile-friendly pan settings
+                                threshold: isMobileDevice() ? 5 : 10, // More sensitive for touch
                             },
                             zoom: {
                                 wheel: {
@@ -1546,7 +1737,7 @@
                                 mode: 'xy',
                                 drag: {
                                     enabled: true,
-                                    threshold: 10,
+                                    threshold: isMobileDevice() ? 5 : 10, // More sensitive on mobile
                                     backgroundColor: 'rgba(0,106,179,0.1)', 
                                     borderColor: 'rgba(0,106,179,0.3)',
                                     borderWidth: 1
@@ -1557,15 +1748,15 @@
                     scales: { 
                         y: { 
                             title: { display: true, text: 'Change from 2025 Baseline (%)' }, 
-                            ticks: { callback: function(value) { return value.toFixed(0) + '%'; } }, // Use 0 decimal places for cleaner axis
-                            min: yMin, // Dynamic min
-                            max: yMax  // Dynamic max
+                            ticks: { callback: function(value) { return value.toFixed(0) + '%'; } },
+                            min: yMin,
+                            max: yMax
                         },
                         x: {
-                             ticks: {
+                            ticks: {
                                 autoSkip: false, 
-                                maxRotation: 45,
-                                minRotation: 30
+                                maxRotation: 30,
+                                minRotation: 0
                             }
                         }
                     }, 
@@ -1573,15 +1764,183 @@
                         tooltip: { 
                             callbacks: { 
                                 label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(1)}%`; }, 
-                                title: function(context) { return `${context[0].label}`; } // Use category name as title
+                                title: function(context) { return `${context[0].label} (Low)`; }
                             } 
-                        } 
+                        },
+                        title: {
+                            display: true,
+                            text: 'Low Events: % Change from 2025',
+                            font: {
+                                size: 14
+                            }
+                        }
                     } 
                 }
             });
-             console.log("Trend Chart initialized successfully.");
+            console.log("Low Trend Chart initialized successfully.");
         } catch (error) {
-            console.error("Error initializing Trend Chart:", error);
+            console.error("Error initializing Low Trend Chart:", error);
+        }
+    }
+    
+    // New function to initialize the Peak events trend chart
+    function initializeTrendChartPeak(canvasElement) {
+        console.log("Attempting to initialize Peak Trend Chart...");
+        if (!canvasElement) {
+            console.warn("initializeTrendChartPeak: Received null canvas element.");
+            return;
+        }
+        
+        let chartInstance = null;
+        const chartCtx = canvasElement.getContext('2d');
+        if (!chartCtx) {
+            console.warn("initializeTrendChartPeak: Failed to get 2D context.");
+            return;
+        }
+        
+        if (!window.trendData || window.trendData.length === 0) {
+            console.warn("Trend summary data is not available or empty. Cannot initialize chart.");
+            chartCtx.clearRect(0, 0, chartCtx.canvas.width, chartCtx.canvas.height);
+            chartCtx.textAlign = 'center';
+            chartCtx.fillText('Summary data not available', chartCtx.canvas.width / 2, chartCtx.canvas.height / 2);
+            return;
+        }
+
+        console.log("Initializing Peak Trend Chart");
+
+        try {
+            // Filter data to only include Peak events
+            const peakEventData = window.trendData.filter(d => d.name.toLowerCase().includes('peak'));
+            
+            // Determine min/max for y-axis dynamically
+            const allPeakValues = peakEventData.flatMap(d => [d.Baseline, d.Replant, d.Urban]);
+            const dataMin = Math.min(0, ...allPeakValues);
+            const dataMax = Math.max(0, ...allPeakValues);
+            const yMin = Math.floor(dataMin - Math.abs(dataMin * 0.1));
+            const yMax = Math.ceil(dataMax + Math.abs(dataMax * 0.1));
+
+            // Add zoom controls
+            const container = canvasElement.closest('.chart-container');
+            if (container) {
+                const zoomControls = document.createElement('div');
+                zoomControls.className = 'zoom-controls';
+                zoomControls.style.display = 'flex';
+                zoomControls.style.justifyContent = 'center';
+                zoomControls.style.alignItems = 'center';
+                zoomControls.style.marginTop = '0.5rem';
+                
+                zoomControls.innerHTML = `
+                    <button id="resetZoomBtnPeak" style="font-size: 0.75rem; background: #f0f0f0; border: 1px solid #ddd; padding: 0.25rem 0.5rem; border-radius: 3px; cursor: pointer; display: flex; align-items: center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.3rem;"><path d="M3 2v6h6"></path><path d="M21 12A9 9 0 0 0 6 5.3L3 8"></path><path d="M21 22v-6h-6"></path><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"></path></svg>
+                        Reset Zoom
+                    </button>
+                `;
+                
+                container.appendChild(zoomControls);
+                
+                // Add click handler for reset button
+                const resetBtn = container.querySelector('#resetZoomBtnPeak');
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', function() {
+                        if (chartInstance && chartInstance.resetZoom) {
+                            chartInstance.resetZoom();
+                        }
+                    });
+                }
+            }
+            
+            chartInstance = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    labels: peakEventData.map(d => d.name.replace('Peak Avg', '')), // Simplify labels
+                    datasets: [
+                        { label: '2050 Baseline', data: peakEventData.map(d => d.Baseline), borderColor: '#fd7e14', backgroundColor: '#fd7e14', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                        { label: 'Replanting (2050)', data: peakEventData.map(d => d.Replant), borderColor: '#17a2b8', backgroundColor: '#17a2b8', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                        { label: 'Urban Development (2050)', data: peakEventData.map(d => d.Urban), borderColor: '#dc3545', backgroundColor: '#dc3545', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    // Mobile optimizations
+                    onResize: function(chart, size) {
+                        // Adjust point and line sizes based on screen width
+                        const datasets = chart.data.datasets;
+                        const isMobile = size.width < 500;
+                        
+                        datasets.forEach(dataset => {
+                            dataset.pointRadius = isMobile ? 4 : 6;
+                            dataset.pointHoverRadius = isMobile ? 6 : 8;
+                            dataset.borderWidth = isMobile ? 2 : 3;
+                        });
+                        
+                        // Adjust legend display
+                        chart.options.plugins.legend.display = size.width > 380;
+                    },
+                    plugins: {
+                        zoom: {
+                            limits: {
+                                y: {min: 'original', max: 'original', minRange: 1}
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                                // Mobile-friendly pan settings
+                                threshold: isMobileDevice() ? 5 : 10, // More sensitive for touch
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                                drag: {
+                                    enabled: true,
+                                    threshold: isMobileDevice() ? 5 : 10, // More sensitive on mobile
+                                    backgroundColor: 'rgba(0,106,179,0.1)', 
+                                    borderColor: 'rgba(0,106,179,0.3)',
+                                    borderWidth: 1
+                                }
+                            }
+                        }
+                    },
+                    scales: { 
+                        y: { 
+                            title: { display: true, text: 'Change from 2025 Baseline (%)' }, 
+                            ticks: { callback: function(value) { return value.toFixed(0) + '%'; } },
+                            min: yMin,
+                            max: yMax
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false, 
+                                maxRotation: 30,
+                                minRotation: 0
+                            }
+                        }
+                    }, 
+                    plugins: { 
+                        tooltip: { 
+                            callbacks: { 
+                                label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(1)}%`; }, 
+                                title: function(context) { return `${context[0].label} (Peak)`; }
+                            } 
+                        },
+                        title: {
+                            display: true,
+                            text: 'Peak Events: % Change from 2025',
+                            font: {
+                                size: 14
+                            }
+                        }
+                    } 
+                }
+            });
+            console.log("Peak Trend Chart initialized successfully.");
+        } catch (error) {
+            console.error("Error initializing Peak Trend Chart:", error);
         }
     }
     
@@ -2175,26 +2534,36 @@
         });
       }
       
-      // Scroll to top button functionality
+      // Scroll to top button functionality - with throttling for better mobile performance
       const scrollTopBtn = document.getElementById('scrollTopBtn');
+      let isScrolling = false;
       
       window.addEventListener('scroll', function() {
-        if (document.documentElement.scrollTop > 300) {
-          scrollTopBtn.style.display = 'block';
-          setTimeout(() => {
-            scrollTopBtn.style.opacity = '1';
-            scrollTopBtn.style.transform = 'translateY(0)';
-          }, 10);
-        } else {
-          scrollTopBtn.style.opacity = '0';
-          scrollTopBtn.style.transform = 'translateY(10px)';
-          setTimeout(() => {
-            if (document.documentElement.scrollTop <= 300) {
-              scrollTopBtn.style.display = 'none';
+        // Throttle scroll events for better performance
+        if (!isScrolling) {
+          isScrolling = true;
+          
+          requestAnimationFrame(() => {
+            if (document.documentElement.scrollTop > 300) {
+              scrollTopBtn.style.display = 'block';
+              setTimeout(() => {
+                scrollTopBtn.style.opacity = '1';
+                scrollTopBtn.style.transform = 'translateY(0)';
+              }, 10);
+            } else {
+              scrollTopBtn.style.opacity = '0';
+              scrollTopBtn.style.transform = 'translateY(10px)';
+              setTimeout(() => {
+                if (document.documentElement.scrollTop <= 300) {
+                  scrollTopBtn.style.display = 'none';
+                }
+              }, 300);
             }
-          }, 300);
+            
+            isScrolling = false;
+          });
         }
-      });
+      }, { passive: true });
       
       scrollTopBtn.addEventListener('click', function() {
         window.scrollTo({
