@@ -513,15 +513,23 @@
             
             // Mount/Unmount React component for Distribution tab
             if (tabId === 'distribution') {
-              // Ensure Babel has processed the script before rendering
-              setTimeout(() => {
-                if (typeof DistributionAnalysisComponent !== 'undefined') {
-                  console.log("Rendering DistributionAnalysisComponent");
-                  ReactDOM.render(React.createElement(DistributionAnalysisComponent), distributionReactRoot);
-                } else {
-                  console.error('DistributionAnalysisComponent not found. Babel might not have finished.');
-                }
-              }, 0);
+               // Ensure Babel has processed the script AND data is ready before rendering
+               setTimeout(() => { // Use timeout to ensure DOM update
+                  if (typeof DistributionAnalysisComponent !== 'undefined') {
+                      // Check if boxPlotData seems valid before rendering
+                      if (window.boxPlotData && Object.keys(window.boxPlotData).length > 0) {
+                           console.log("Rendering DistributionAnalysisComponent with data prop:", window.boxPlotData);
+                           // Pass the data as a prop
+                           ReactDOM.render(React.createElement(DistributionAnalysisComponent, { initialData: window.boxPlotData }), distributionReactRoot);
+                      } else {
+                           console.warn("Attempted to render DistributionAnalysisComponent, but window.boxPlotData is not ready.");
+                           // Optionally render a placeholder or error message here directly
+                           distributionReactRoot.innerHTML = '<p class="text-red-500">Distribution data is not available. Please check the data source and console logs.</p>';
+                      }
+                  } else {
+                      console.error('DistributionAnalysisComponent not found. Babel might not have finished.');
+                  }
+              }, 0); // Delay ensures DOM is updated
             } else {
               // Unmount React component if it exists and we are switching away
               if (distributionReactRoot.hasChildNodes()) {
@@ -530,34 +538,44 @@
               }
             }
             
-            // Initialize Chart.js charts if they haven't been already, the tab is active, AND data is loaded
-            if (tabId === 'raw' && !rawChartInstance && window.rawOutflowData && window.rawOutflowData.length > 0) {
-              initializeRawChart();
-            } else if (tabId === 'percentage' && !percentageChartInstance && window.percentageChangeData && window.percentageChangeData.length > 0) {
-              initializePercentageChart();
-            } else if (tabId === 'trends' && !trendChartInstance && window.trendData && window.trendData.length > 0) {
-              initializeTrendChart();
-            }
+            // Use setTimeout to ensure the tab content is visible before initializing charts
+            // Always attempt initialization; the functions handle data checks and re-creation.
+            setTimeout(() => {
+              console.log(`Tab '${tabId}' selected, attempting chart initialization if applicable.`);
+              if (tabId === 'raw') {
+                initializeRawChart();
+              } else if (tabId === 'percentage') {
+                initializePercentageChart();
+              } else if (tabId === 'trends') {
+                initializeTrendChart();
+              }
+              // No need to initialize distribution chart here, handled above.
+            }, 50); // Small delay after tab switch
           });
         });
         
         // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
-        // Add a small delay to ensure the canvas is rendered
+        // Add a slightly longer delay to ensure the canvas is rendered after initial load
         setTimeout(() => {
             if (window.rawOutflowData && window.rawOutflowData.length > 0) {
-               console.log("Attempting initial Raw Chart initialization.");
+               console.log("Attempting initial Raw Chart initialization after delay.");
                initializeRawChart();
             } else {
-               console.warn("Raw outflow data not available, cannot initialize default chart.");
+               console.warn("Initial load: Raw outflow data not available, cannot initialize default chart.");
                // Optionally try to display message on canvas if it exists
-               const rawCtx = document.getElementById('rawChart')?.getContext('2d');
-               if (rawCtx) {
-                  rawCtx.clearRect(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
-                  rawCtx.textAlign = 'center';
-                  rawCtx.fillText('Data not available', rawCtx.canvas.width / 2, rawCtx.canvas.height / 2);
+               const canvasElement = document.getElementById('rawChart');
+               if (canvasElement) {
+                   const rawCtx = canvasElement.getContext('2d');
+                   if (rawCtx) {
+                      rawCtx.clearRect(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
+                      rawCtx.textAlign = 'center';
+                      rawCtx.fillText('Data not available', rawCtx.canvas.width / 2, rawCtx.canvas.height / 2);
+                   }
+               } else {
+                   console.warn("Initial load: Raw chart canvas element not found even after delay.");
                }
             }
-        }, 100); // 100ms delay - adjust if needed
+        }, 250); // Increased delay to 250ms
         
       }).catch(error => {
         console.error("Error during initial data load sequence:", error);
@@ -568,9 +586,16 @@
     // --- Chart.js Initialization Functions ---
     
     function initializeRawChart() {
-        const rawCtx = document.getElementById('rawChart')?.getContext('2d');
+        console.log("initializeRawChart called.");
+        const canvasElement = document.getElementById('rawChart');
+        if (!canvasElement) {
+             console.warn("initializeRawChart: Canvas element with ID 'rawChart' not found in the DOM.");
+             return;
+        }
+        console.log("initializeRawChart: Canvas element found:", canvasElement);
+        const rawCtx = canvasElement.getContext('2d');
         if (!rawCtx) {
-            console.warn("Raw chart canvas not found.");
+            console.warn("initializeRawChart: Failed to get 2D context from canvas.");
             return; 
         }
         // Check if data is loaded and valid
@@ -699,16 +724,17 @@
         return yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
     };
 
-    const generateAreaDistributionData = (yearGroup) => {
+    // Update function signature to accept data as argument
+    const generateAreaDistributionData = (yearGroup, boxPlotData) => { 
         // Map yearGroup to the correct sheet names/keys
         const lowKey = yearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
         const peakKey = yearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
 
-        // Check if boxPlotData and the required keys exist and contain data
-        if (!window.boxPlotData || 
-            !window.boxPlotData[lowKey] || !Array.isArray(window.boxPlotData[lowKey]) || window.boxPlotData[lowKey].length === 0 ||
-            !window.boxPlotData[peakKey] || !Array.isArray(window.boxPlotData[peakKey]) || window.boxPlotData[peakKey].length === 0) {
-            console.warn(`Box plot data for keys '${lowKey}' or '${peakKey}' not found, is not an array, or is empty.`);
+        // Check if the passed boxPlotData and the required keys exist and contain data
+        if (!boxPlotData || 
+            !boxPlotData[lowKey] || !Array.isArray(boxPlotData[lowKey]) || boxPlotData[lowKey].length === 0 ||
+            !boxPlotData[peakKey] || !Array.isArray(boxPlotData[peakKey]) || boxPlotData[peakKey].length === 0) {
+            console.warn(`generateAreaDistributionData: Box plot data for keys '${lowKey}' or '${peakKey}' not found in passed data, is not an array, or is empty.`);
             return [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
         }
 
@@ -754,17 +780,17 @@
             return values;
         };
 
-        // Extract data for each scenario from the LOW sheet data
-        const lowCurrentData = extractScenarioData(window.boxPlotData[lowKey], 'current');
-        const lowBaselineData = extractScenarioData(window.boxPlotData[lowKey], 'baseline');
-        const lowReplantData = extractScenarioData(window.boxPlotData[lowKey], 'replant');
-        const lowUrbanData = extractScenarioData(window.boxPlotData[lowKey], 'urban');
+        // Extract data for each scenario from the LOW sheet data using the passed argument
+        const lowCurrentData = extractScenarioData(boxPlotData[lowKey], 'current');
+        const lowBaselineData = extractScenarioData(boxPlotData[lowKey], 'baseline');
+        const lowReplantData = extractScenarioData(boxPlotData[lowKey], 'replant');
+        const lowUrbanData = extractScenarioData(boxPlotData[lowKey], 'urban');
 
-        // Extract data for each scenario from the PEAK sheet data
-        const peakCurrentData = extractScenarioData(window.boxPlotData[peakKey], 'current');
-        const peakBaselineData = extractScenarioData(window.boxPlotData[peakKey], 'baseline');
-        const peakReplantData = extractScenarioData(window.boxPlotData[peakKey], 'replant');
-        const peakUrbanData = extractScenarioData(window.boxPlotData[peakKey], 'urban');
+        // Extract data for each scenario from the PEAK sheet data using the passed argument
+        const peakCurrentData = extractScenarioData(boxPlotData[peakKey], 'current');
+        const peakBaselineData = extractScenarioData(boxPlotData[peakKey], 'baseline');
+        const peakReplantData = extractScenarioData(boxPlotData[peakKey], 'replant');
+        const peakUrbanData = extractScenarioData(boxPlotData[peakKey], 'urban');
 
         // Calculate stats on the extracted numerical arrays
         const lowStats = {
@@ -796,7 +822,8 @@
     };
 
     // --- React Component for Distribution Tab ---
-    function DistributionAnalysisComponent() {
+    function DistributionAnalysisComponent(props) { // Accept props
+        const { initialData } = props; // Destructure the passed data
         const [selectedYearGroup, setSelectedYearGroup] = useState('2yr');
         const [chartHover, setChartHover] = useState(null); // Optional hover state
         const [isDataReady, setIsDataReady] = useState(false);
@@ -825,9 +852,9 @@
             checkData();
         }, [selectedYearGroup]); // Re-check when selectedYearGroup changes
 
-        // Regenerate data only if ready
+        // Regenerate data only if ready, using the prop or falling back to window data
         const areaDistributionData = isDataReady 
-            ? generateAreaDistributionData(selectedYearGroup) 
+            ? generateAreaDistributionData(selectedYearGroup, initialData || window.boxPlotData) 
             : [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
         const yAxisRange = getDistributionYAxisRange(selectedYearGroup);
 
@@ -860,22 +887,27 @@
              const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
              const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
              
-             if (!window.boxPlotData || !window.boxPlotData[lowKey] || !Array.isArray(window.boxPlotData[lowKey]) || window.boxPlotData[lowKey].length === 0) {
+             // Check the passed initialData prop first, then fall back to window.boxPlotData
+             const dataSource = initialData || window.boxPlotData;
+             
+             if (!dataSource || !dataSource[lowKey] || !Array.isArray(dataSource[lowKey]) || dataSource[lowKey].length === 0) {
                  missingKeys.push(`'${lowKey}'`);
              }
-             if (!window.boxPlotData || !window.boxPlotData[peakKey] || !Array.isArray(window.boxPlotData[peakKey]) || window.boxPlotData[peakKey].length === 0) {
+             if (!dataSource || !dataSource[peakKey] || !Array.isArray(dataSource[peakKey]) || dataSource[peakKey].length === 0) {
                  missingKeys.push(`'${peakKey}'`);
              }
 
              let message = `Loading data or data unavailable for the ${selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} period...`;
              if (missingKeys.length > 0) {
                  message = `Data unavailable. Please ensure the 'uncertainty.xlsx' file contains valid data in the sheet(s): ${missingKeys.join(' and ')}. Check console for details.`;
+             } else if (!initialData && props.initialData === undefined) {
+                 message = `Data not passed correctly to the component. Check console logs.`;
              }
 
              return (
                 <div>
                     <h2 className="text-xl font-semibold text-gray-800 mb-1">Distribution Analysis</h2>
-                    <p className="text-gray-600 mb-4 text-sm italic">Loading data or data unavailable for the selected period...</p>
+                    <p className="text-red-600 bg-red-100 p-3 rounded border border-red-300 mb-4 text-sm italic">{message}</p>
                      {/* Still show selectors */}
                      <div className="flex flex-wrap mb-6">
                         <button 
@@ -898,9 +930,6 @@
                         >
                             200-Year Return Period
                         </button>
-                    </div>
-                    <div className="p-4 bg-red-50 text-red-700 rounded-lg my-4">
-                        {message}
                     </div>
                 </div>
             );
