@@ -1,452 +1,947 @@
 <Plan>
-The logs show data loading is successful, but issues remain with chart initialization and React component data readiness.
-
-1.  **React Data Passing:** The React component (`DistributionAnalysisComponent`) is checking `window.boxPlotData` in its `useEffect`, which might run before `loadExcelData` fully populates it, causing the "Distribution data... not ready" warning. We will modify the main script to pass the `boxPlotData` as a prop to the React component only when the distribution tab is clicked *and* the data is confirmed to be ready. The React component will be updated to accept and use this prop, removing its internal `useEffect` check for `window.boxPlotData`.
-2.  **Chart.js Initialization Timing (Tab Switch):** The `setTimeout` for tab switching might still be insufficient, or the logic is flawed. We will simplify: inside the `setTimeout` for tab clicks, *always* call the relevant `initialize...Chart` function for the selected tab (Raw, Percentage, Trend). The initialization functions themselves already contain checks for data validity and canvas existence, and they destroy old instances. This makes the logic more robust.
-3.  **Initial Raw Chart Initialization Timing:** The initial "Raw chart canvas not found" persists. We'll increase the `setTimeout` delay for the very first `initializeRawChart` call after data loading finishes (e.g., to 250ms) and add more specific logging within `initializeRawChart` to see if the canvas element itself is found by `getElementById`.
-
+1.  **Modify `index.html`:**
+    *   **Correct Summary Data Loading:** Update `loadExcelData` to calculate summary statistics (average) from the detailed sheets (`2yr max outflow - low`, `2yr max outflow - peak`, etc.) instead of using the first sheet directly for `rawOutflowData`, `percentageChangeData`, and `trendData`. Create placeholder categories like "2yr Low Avg", "2yr Peak Avg", "200yr Low Avg", "200yr Peak Avg".
+    *   **Robust Column Name Matching:** Enhance `extractScenarioData` within the React component's script block to handle variations in column names (e.g., "2yr current cms", "current", "cc urban", "cc replant", "cc Base (ViT)", "cc base (ViT)") using case-insensitive checks and keyword matching. This will fix the zero values issue for the 200yr peak data.
+    *   **Fix Chart Initialization:** Ensure Chart.js instances are created only when the corresponding canvas element exists and the tab is active. Modify the tab click listener and the initial load logic.
+    *   **Fix React Data Handling:** Adjust the `DistributionAnalysisComponent` (`isDataReady` check, `generateAreaDistributionData` call) to correctly use the `window.boxPlotData` structure with the actual sheet names as keys and rely on the improved `extractScenarioData`. Pass the data explicitly via props.
+    *   **Refine React Chart Rendering:** Update the Recharts Area/Line components in the React component to use the `dataKey` accessor function `d => [d.q1, d.q3]` for the quartile range area, ensuring it works correctly with the calculated stats. Improve the legend and tooltips.
 </Plan>
 
-<file path="/Users/alikara/Desktop/508 website/index.html" action="modify">
+<file path="/Users/alikara/Desktop/508 website/index.html" action="rewrite">
   <change>
-    <description>Modify tab click logic: Pass data as prop to React component; always call init for Chart.js tabs.</description>
-    <search>
-===
-              // Mount/Unmount React component for Distribution tab
-              if (tabId === 'distribution') {
-                // Ensure Babel has processed the script before rendering
-                 setTimeout(() => {
-                    if (typeof DistributionAnalysisComponent !== 'undefined') {
-                        console.log("Rendering DistributionAnalysisComponent");
-                        ReactDOM.render(React.createElement(DistributionAnalysisComponent), distributionReactRoot);
-                    } else {
-                        console.error('DistributionAnalysisComponent not found. Babel might not have finished.');
-                    }
-                }, 0);
-              } else {
-                // Unmount React component if it exists and we are switching away
-                if (distributionReactRoot.hasChildNodes()) {
-                  console.log("Unmounting DistributionAnalysisComponent");
-                  ReactDOM.unmountComponentAtNode(distributionReactRoot);
-                }
-              }
-              
-              // Use setTimeout to ensure the tab content is visible before initializing charts
-              setTimeout(() => {
-                if (tabId === 'raw' && !rawChartInstance && window.rawOutflowData && window.rawOutflowData.length > 0) {
-                  console.log(`Tab ${tabId} selected, attempting to initialize chart.`);
-                  initializeRawChart();
-                } else if (tabId === 'percentage' && !percentageChartInstance && window.percentageChangeData && window.percentageChangeData.length > 0) {
-                  console.log(`Tab ${tabId} selected, attempting to initialize chart.`);
-                  initializePercentageChart();
-                } else if (tabId === 'trends' && !trendChartInstance && window.trendData && window.trendData.length > 0) {
-                  console.log(`Tab ${tabId} selected, attempting to initialize chart.`);
-                  initializeTrendChart();
-                }
-              }, 0); // 0ms delay pushes execution after DOM update
-
-            });
-          });
-===
-    </search>
+    <description>Rewrite index.html to fix data loading, chart initialization, React component data handling, and column name matching.</description>
     <content>
 ===
-              // Mount/Unmount React component for Distribution tab
-              if (tabId === 'distribution') {
-                 // Ensure Babel has processed the script AND data is ready before rendering
-                 setTimeout(() => { // Use timeout to ensure DOM update
-                    if (typeof DistributionAnalysisComponent !== 'undefined') {
-                        // Check if boxPlotData seems valid before rendering
-                        if (window.boxPlotData && Object.keys(window.boxPlotData).length > 0) {
-                             console.log("Rendering DistributionAnalysisComponent with data prop:", window.boxPlotData);
-                             // Pass the data as a prop
-                             ReactDOM.render(React.createElement(DistributionAnalysisComponent, { initialData: window.boxPlotData }), distributionReactRoot);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Dashboard</title>
+  
+  <!-- Chart.js (for Raw, Percentage, Trend tabs) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  
+  <!-- React, ReactDOM, Babel (for Distribution tab) -->
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Add prop-types dependency for Recharts -->
+  <script src="https://unpkg.com/prop-types@15.6/prop-types.min.js"></script> 
+  
+  <!-- Recharts (for Distribution tab) - Switched to jsDelivr CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+  
+  <!-- Babel (must be after React/Recharts) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Tailwind CSS (via CDN for styling consistency with React component) -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    /* Keep existing styles for overall layout and non-React tabs */
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    
+    .header {
+      background: linear-gradient(to right, #0d47a1, #1976d2);
+      color: white;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+    
+    .tab-links {
+      display: flex;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #dee2e6;
+      margin-bottom: 2rem;
+    }
+    
+    .tab-link {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      background-color: #f1f1f1;
+      border: none;
+      border-radius: 5px 5px 0 0;
+      margin-right: 0.5rem;
+      margin-bottom: -1px; /* Overlap border */
+      transition: all 0.3s;
+      border: 1px solid transparent;
+      border-bottom: none;
+    }
+    
+    .tab-link.active {
+      background-color: white;
+      border-color: #dee2e6 #dee2e6 white;
+      border-bottom: 3px solid #1976d2;
+      color: #1976d2;
+      font-weight: bold;
+    }
+    
+    .tab-link:hover:not(.active) {
+      background-color: #e9ecef;
+    }
+    
+    .tab-content {
+      display: none;
+      background-color: white;
+      padding: 2rem;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      border-radius: 0 5px 5px 5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .chart-container {
+      position: relative; /* Needed for Chart.js responsiveness */
+      height: 400px;
+      width: 100%;
+      margin-bottom: 2rem;
+    }
+    
+    .info-box {
+      background-color: #e6f3ff;
+      padding: 1rem;
+      border-left: 4px solid #1976d2;
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+    }
+    
+    .footer {
+      background-color: #343a40;
+      color: #adb5bd;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      margin-top: 2rem;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    
+    @media (min-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    .card {
+      background-color: #f1f1f1;
+      padding: 1.5rem;
+      border-radius: 4px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    table th, table td {
+      padding: 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid #dee2e6;
+    }
+    
+    table th {
+      background-color: #f1f1f1;
+    }
+    
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+        
+    .subtitle {
+      font-style: italic;
+      color: #6c757d;
+      margin-bottom: 1.5rem;
+    }
+        
+    /* Styles needed by React component if not covered by Tailwind */
+    .recharts-tooltip-wrapper {
+      z-index: 1000 !important; /* Ensure tooltip is on top */
+    }
+    
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <h1>Max Outflow Uncertainty Dashboard</h1>
+      <p>
+        Interactive analysis of climate scenarios (2050 baseline, Urban development, Replanting efforts)
+        and their impact on maximum water outflow across different rainfall event severities.
+      </p>
+    </div>
+  </header>
+  
+  <main class="container">
+    <div class="tab-links">
+      <button class="tab-link active" id="tab-raw">Raw Outflow</button>
+      <button class="tab-link" id="tab-distribution">Distribution Analysis</button>
+      <button class="tab-link" id="tab-percentage">Percentage Change</button>
+      <button class="tab-link" id="tab-trends">Trend Analysis</button>
+    </div>
+    
+    <!-- Raw Outflow Tab (Chart.js) -->
+    <div id="raw" class="tab-content active">
+      <h2>Raw Max Outflow Comparison</h2>
+      <p class="subtitle">Average values across 100 samples for each return period</p>
+      
+      <div class="info-box">
+        <p>
+          This chart compares the average maximum outflow values (in cms) across all scenarios and return periods. 
+          Higher values indicate increased water flow volume during rainfall events.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="rawChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Distribution Analysis Tab (React/Recharts) -->
+    <div id="distribution" class="tab-content">
+      <!-- React component will render here -->
+      <div id="distributionReactRoot"></div> 
+    </div>
+    
+    <!-- Percentage Change Tab (Chart.js) -->
+    <div id="percentage" class="tab-content">
+      <h2>Percentage Change from 2050 Baseline</h2>
+      <p class="subtitle">Calculated from average values across 100 samples</p>
+      
+      <div class="info-box">
+        <p>
+          This chart shows how the Urban and Replant scenarios compare to the 2050 Baseline in percentage terms, based on average outflow.
+          Negative values indicate reduced outflow compared to the baseline scenario.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="percentageChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- Trend Analysis Tab (Chart.js) -->
+    <div id="trends" class="tab-content">
+      <h2>Trend Analysis: Scenario Changes Across Events</h2>
+      <p class="subtitle">Showing percentage change from current conditions (based on averages)</p>
+      
+      <div class="info-box">
+        <p>
+          This visualization shows how the impact of different scenarios changes across rainfall event severities, using average values.
+          The chart displays percentage changes relative to current conditions, highlighting how climate change and land use 
+          strategies affect water outflows differently across event scales.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+      </div>
+      
+      <div class="grid" style="margin-top: 2rem;">
+        <div class="card">
+          <h3>Key Observations (Based on Averages)</h3>
+          <ul>
+            <li>The impact of <span class="font-semibold" style="color: #fd7e14;">climate change (2050 baseline)</span> increases with rainfall severity - showing significantly higher average outflow for 200-year events compared to current.</li>
+            <li><span class="font-semibold" style="color: #17a2b8;">Replanting efforts</span> appear most effective at reducing average outflow during smaller events (2-year return periods).</li>
+            <li><span class="font-semibold" style="color: #dc3545;">Urban development</span> generally increases average outflow, with potentially less *additional* impact relative to baseline at extreme events.</li>
+            <li>All future scenarios show higher average outflow than current conditions, especially for extreme events.</li>
+          </ul>
+        </div>
+        
+        <div class="card">
+          <h3>Implications</h3>
+          <ul>
+            <li>Planning for <span class="font-semibold">greater outflow capacity</span> is critical across all future scenarios.</li>
+            <li>The most dramatic increases in average outflow occur between current conditions and the 2050 baseline.</li>
+            <li>Mitigation strategies (like replanting) show diminishing returns as rainfall severity increases.</li>
+            <li>Under 200-year peak events, average outflow under all future scenarios is substantially higher than current conditions.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <div class="container">
+      <p>Max Outflow Uncertainty Dashboard | Data from uncertainty.xlsx</p>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize data containers - will be filled from Excel
+    window.rawOutflowData = []; // Will hold SUMMARY data for bar chart
+    window.percentageChangeData = []; // Will hold SUMMARY data for bar chart
+    window.trendData = []; // Will hold SUMMARY data for line chart
+    window.boxPlotData = {}; // Will hold FULL data arrays for distribution analysis
+    
+    // Chart.js Instances (for non-React tabs)
+    let rawChartInstance, percentageChartInstance, trendChartInstance;
+
+    // --- Helper Function to find column name robustly ---
+    function findColumnName(keys, keywords) {
+        const lowerKeywords = keywords.map(k => k.toLowerCase());
+        for (const key of keys) {
+            const lowerKey = key.toLowerCase();
+            if (lowerKeywords.some(kw => lowerKey.includes(kw))) {
+                return key;
+            }
+        }
+        console.warn(`Could not find column matching keywords: ${keywords.join(', ')} in keys: ${keys.join(', ')}`);
+        return null; // Return null if no match found
+    }
+
+    // --- Helper Function to calculate average ---
+    function calculateAverage(dataArray) {
+        if (!dataArray || dataArray.length === 0) return 0;
+        const sum = dataArray.reduce((acc, val) => acc + (Number(val) || 0), 0);
+        return sum / dataArray.length;
+    }
+
+    // --- Load data from uncertainty.xlsx using XLSX library ---
+    async function loadExcelData() {
+      console.log("Attempting to load Excel data...");
+      try {
+        // Show loading indicators
+        document.querySelectorAll('.chart-container').forEach(container => {
+          container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><p>Loading data from Excel...</p></div>';
+        });
+        
+        const response = await fetch('uncertainty.xlsx');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        
+        console.log("Excel file loaded successfully. Sheets:", workbook.SheetNames);
+        
+        if (workbook.SheetNames.length === 0) {
+          throw new Error("Excel file contains no sheets");
+        }
+        
+        // Function to safely parse sheet to JSON and log issues
+        const safeSheetToJson = (sheetName) => {
+          const sheet = workbook.Sheets[sheetName];
+          if (!sheet) {
+            console.warn(`Sheet "${sheetName}" not found.`);
+            return []; // Return empty array if sheet is missing
+          }
+          try {
+            // Use header: 1 to get arrays, easier to find columns if header row isn't perfect
+            const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }); 
+            if (data.length < 2) { // Need header row + at least one data row
+                 console.warn(`Sheet "${sheetName}" has insufficient data (rows: ${data.length}).`);
+                 return [];
+            }
+            // Convert array of arrays to array of objects using the first row as headers
+            const headers = data[0].map(h => String(h).trim()); // Trim header names
+            const jsonData = data.slice(1).map((row, index) => {
+                const obj = { __rowNum__: index + 2 }; // Keep original row number if needed
+                headers.forEach((header, i) => {
+                    if (header) { // Only add if header is not empty
+                         obj[header] = row[i];
+                    }
+                });
+                return obj;
+            });
+
+            console.log(`Sheet "${sheetName}" parsed successfully. Rows: ${jsonData.length}`);
+            if (jsonData.length > 0) {
+              console.log(`Sheet "${sheetName}" first row keys:`, Object.keys(jsonData[0]));
+            }
+            return jsonData;
+          } catch (e) {
+            console.error(`Error parsing sheet "${sheetName}":`, e);
+            return []; // Return empty array on parsing error
+          }
+        };
+
+        // --- Load and Process Box Plot Data FIRST ---
+        window.boxPlotData = {};
+        const boxPlotSheetNames = {
+            "2yr-low": "2yr max outflow - low",
+            "2yr-peak": "2yr max outflow - peak",
+            "200yr-low": "200yr max outflow - low",
+            "200yr-peak": "200yr max outflow - peak"
+        };
+        
+        const summaryData = {}; // To store calculated averages
+
+        for (const [key, sheetName] of Object.entries(boxPlotSheetNames)) {
+            let matchingSheet = workbook.SheetNames.find(name => name.toLowerCase() === sheetName.toLowerCase());
+            
+            if (matchingSheet) {
+                console.log(`Processing sheet for boxplot/summary: "${matchingSheet}" (key: ${key})`);
+                const sheetData = safeSheetToJson(matchingSheet);
+                
+                if (sheetData && sheetData.length > 0) {
+                    const keys = Object.keys(sheetData[0]);
+                    // Find column names robustly
+                    const currentCol = findColumnName(keys, ['current', '2yr', '200yr']); // More flexible matching
+                    const baselineCol = findColumnName(keys, ['base', 'baseline']);
+                    const replantCol = findColumnName(keys, ['replant']);
+                    const urbanCol = findColumnName(keys, ['urban']);
+
+                    // Log found columns for debugging
+                    console.log(`Columns found for ${key}: Current=${currentCol}, Baseline=${baselineCol}, Replant=${replantCol}, Urban=${urbanCol}`);
+
+                    // Extract numeric data for boxplot
+                    const extractNumeric = (colName) => {
+                        if (!colName) return []; // Return empty if column not found
+                        return sheetData.map(row => Number(row[colName])).filter(n => !isNaN(n));
+                    };
+                    
+                    const currentData = extractNumeric(currentCol);
+                    const baselineData = extractNumeric(baselineCol);
+                    const replantData = extractNumeric(replantCol);
+                    const urbanData = extractNumeric(urbanCol);
+
+                    // Store full data for boxplot
+                    window.boxPlotData[sheetName] = { // Use the actual sheet name as the key here
+                        current: currentData,
+                        baseline: baselineData,
+                        replant: replantData,
+                        urban: urbanData
+                    };
+                    console.log(`Boxplot data for ${sheetName} processed. Samples: Current=${currentData.length}, Baseline=${baselineData.length}, Replant=${replantData.length}, Urban=${urbanData.length}`);
+
+                    // Calculate averages for summary charts
+                    summaryData[key] = {
+                        category: key.replace('-', ' ').replace('yr', '-Year ').replace('low', 'Low Avg').replace('peak', 'Peak Avg'), // e.g., "2-Year Low Avg"
+                        Current: calculateAverage(currentData),
+                        Baseline: calculateAverage(baselineData),
+                        Replant: calculateAverage(replantData),
+                        Urban: calculateAverage(urbanData)
+                    };
+                     console.log(`Summary averages for ${key}:`, summaryData[key]);
+
+                } else {
+                    console.warn(`No data found or parsed in sheet for ${sheetName}`);
+                    window.boxPlotData[sheetName] = { current: [], baseline: [], replant: [], urban: [] };
+                    summaryData[key] = { category: key, Current: 0, Baseline: 0, Replant: 0, Urban: 0 };
+                }
+            } else {
+                console.warn(`No matching sheet found for "${sheetName}"`);
+                window.boxPlotData[sheetName] = { current: [], baseline: [], replant: [], urban: [] };
+                summaryData[key] = { category: key, Current: 0, Baseline: 0, Replant: 0, Urban: 0 };
+            }
+        }
+
+        // --- Populate Summary Data Arrays ---
+        // Order the summary data logically
+        const orderedKeys = ["2yr-low", "2yr-peak", "200yr-low", "200yr-peak"];
+        window.rawOutflowData = orderedKeys.map(key => summaryData[key]).filter(Boolean); // Use calculated averages
+        
+        // Calculate percentage change from summary data
+        window.percentageChangeData = window.rawOutflowData.map(item => {
+            const baseline = item.Baseline || 0;
+            const urban = item.Urban || 0;
+            const replant = item.Replant || 0;
+            const urbanPct = baseline !== 0 ? ((urban - baseline) / baseline) * 100 : 0;
+            const replantPct = baseline !== 0 ? ((replant - baseline) / baseline) * 100 : 0;
+            
+            return {
+                category: item.category,
+                Urban: urbanPct,
+                Replant: replantPct
+            };
+        });
+
+        // Calculate trend data from summary data
+        window.trendData = window.rawOutflowData.map(item => {
+            const current = item.Current || 0;
+            const baseline = item.Baseline || 0;
+            const replant = item.Replant || 0;
+            const urban = item.Urban || 0;
+            const baselineChange = current !== 0 ? ((baseline - current) / current) * 100 : 0;
+            const replantChange = current !== 0 ? ((replant - current) / current) * 100 : 0;
+            const urbanChange = current !== 0 ? ((urban - current) / current) * 100 : 0;
+            
+            return {
+                name: item.category, // Use the category name for the x-axis label
+                Current: 0, // Current is always 0% (reference point)
+                Baseline: baselineChange,
+                Replant: replantChange,
+                Urban: urbanChange
+            };
+        });
+
+        console.log("Final loaded and processed data structure:", {
+          rawOutflowData: window.rawOutflowData,
+          percentageChangeData: window.percentageChangeData,
+          boxPlotData: window.boxPlotData,
+          trendData: window.trendData
+        });
+        
+        console.log("Excel data loading and processing finished successfully.");
+        
+      } catch (error) {
+        console.error("Error loading or processing Excel data:", error);
+        document.querySelectorAll('.chart-container').forEach(container => {
+          container.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;height:100%;color:red;">
+            <p>Error loading data: ${error.message}. Please check console for details.</p>
+          </div>`;
+        });
+        
+        // Ensure data variables are empty arrays if loading fails
+        window.rawOutflowData = [];
+        window.percentageChangeData = [];
+        window.boxPlotData = {};
+        window.trendData = [];
+      }
+      
+      // Return true if boxplot data seems to have loaded (basic check)
+      return window.boxPlotData && Object.keys(window.boxPlotData).length > 0; 
+    }
+    
+    // --- Initialize charts and tabs ---
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM fully loaded and parsed");
+      const distributionTabContent = document.getElementById('distribution');
+      const distributionReactRoot = document.getElementById('distributionReactRoot');
+      let reactComponentMounted = false; // Track if React component is mounted
+
+      // Load data first, then initialize tabs and default chart
+      loadExcelData().then((dataLoaded) => {
+        console.log("Excel data loading completed, dataLoaded check:", dataLoaded);
+        
+        // Initialize tabs after data load attempt
+        const tabLinks = document.querySelectorAll('.tab-link');
+        tabLinks.forEach(tab => {
+          tab.addEventListener('click', function() {
+            const tabId = this.id.replace('tab-', '');
+            
+            // Hide all tabs and remove active class from links
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+            
+            // Show the selected tab and mark link as active
+            const activeContent = document.getElementById(tabId);
+            if (activeContent) activeContent.classList.add('active');
+            this.classList.add('active');
+            
+            // --- Chart Initialization / React Mounting ---
+            // Use setTimeout to allow the DOM to update (tab becomes visible)
+            setTimeout(() => {
+                console.log(`Tab '${tabId}' selected, attempting updates.`);
+                
+                // Unmount React component if switching AWAY from distribution tab
+                if (tabId !== 'distribution' && reactComponentMounted) {
+                    if (distributionReactRoot.hasChildNodes()) {
+                        console.log("Unmounting DistributionAnalysisComponent");
+                        ReactDOM.unmountComponentAtNode(distributionReactRoot);
+                        reactComponentMounted = false;
+                    }
+                }
+
+                // Destroy existing Chart.js instances if switching AWAY from their tabs
+                if (tabId !== 'raw' && rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; console.log("Destroyed Raw Chart instance."); }
+                if (tabId !== 'percentage' && percentageChartInstance) { percentageChartInstance.destroy(); percentageChartInstance = null; console.log("Destroyed Percentage Chart instance."); }
+                if (tabId !== 'trends' && trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; console.log("Destroyed Trend Chart instance."); }
+
+                // Initialize/Mount based on the NOW ACTIVE tab
+                if (tabId === 'raw') {
+                    initializeRawChart();
+                } else if (tabId === 'percentage') {
+                    initializePercentageChart();
+                } else if (tabId === 'trends') {
+                    initializeTrendChart();
+                } else if (tabId === 'distribution') {
+                    // Mount React component only if not already mounted
+                    if (!reactComponentMounted) {
+                        if (typeof window.DistributionAnalysisComponent !== 'undefined') {
+                            // Check if boxPlotData seems valid before rendering
+                            if (window.boxPlotData && Object.keys(window.boxPlotData).length > 0) {
+                                console.log("Rendering DistributionAnalysisComponent with data prop:", window.boxPlotData);
+                                // Pass the data as a prop
+                                ReactDOM.render(React.createElement(window.DistributionAnalysisComponent, { initialData: window.boxPlotData }), distributionReactRoot);
+                                reactComponentMounted = true;
+                            } else {
+                                console.warn("Attempted to render DistributionAnalysisComponent, but window.boxPlotData is not ready or empty.");
+                                distributionReactRoot.innerHTML = '<p class="text-red-500">Distribution data is not available. Please check the data source and console logs.</p>';
+                            }
                         } else {
-                             console.warn("Attempted to render DistributionAnalysisComponent, but window.boxPlotData is not ready.");
-                             // Optionally render a placeholder or error message here directly
-                             distributionReactRoot.innerHTML = '<p class="text-red-500">Distribution data is not available. Please check the data source and console logs.</p>';
+                            console.error('DistributionAnalysisComponent not found. Babel might not have finished, or there was a script error.');
+                            distributionReactRoot.innerHTML = '<p class="text-red-500">Error loading Distribution Analysis component. Check console logs.</p>';
                         }
                     } else {
-                        console.error('DistributionAnalysisComponent not found. Babel might not have finished.');
+                         console.log("DistributionAnalysisComponent already mounted.");
                     }
-                }, 0); // Delay ensures DOM is updated
-              } else {
-                // Unmount React component if it exists and we are switching away
-                if (distributionReactRoot.hasChildNodes()) {
-                  console.log("Unmounting DistributionAnalysisComponent");
-                  ReactDOM.unmountComponentAtNode(distributionReactRoot);
                 }
-              }
-              
-              // Use setTimeout to ensure the tab content is visible before initializing charts
-              // Always attempt initialization; the functions handle data checks and re-creation.
-              setTimeout(() => {
-                console.log(`Tab '${tabId}' selected, attempting chart initialization if applicable.`);
-                if (tabId === 'raw') {
-                  initializeRawChart();
-                } else if (tabId === 'percentage') {
-                  initializePercentageChart();
-                } else if (tabId === 'trends') {
-                  initializeTrendChart();
-                }
-                // No need to initialize distribution chart here, handled above.
-              }, 50); // Small delay after tab switch
-
-            });
+            }, 50); // Small delay ensures DOM is updated and visible
           });
-===
-    </content>
-  </change>
-  <change>
-    <description>Increase delay for initial raw chart init and add logging for canvas element check.</description>
-    <search>
-===
-          
-          // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
-          // Add a small delay to ensure the canvas is rendered
-          setTimeout(() => {
-              if (window.rawOutflowData && window.rawOutflowData.length > 0) {
-                 console.log("Attempting initial Raw Chart initialization.");
-                 initializeRawChart();
-              } else {
-                 console.warn("Raw outflow data not available, cannot initialize default chart.");
-                 // Optionally try to display message on canvas if it exists
-                 const rawCtx = document.getElementById('rawChart')?.getContext('2d');
-                 if (rawCtx) {
-                    rawCtx.clearRect(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
-                    rawCtx.textAlign = 'center';
-                    rawCtx.fillText('Data not available', rawCtx.canvas.width / 2, rawCtx.canvas.height / 2);
-                 }
-              }
-          }, 100); // 100ms delay - adjust if needed
-
-      }).catch(error => {
-          console.error("Error during initial data load sequence:", error);
-      });
-===
-    </search>
-    <content>
-===
-          
-          // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
-          // Add a slightly longer delay to ensure the canvas is rendered after initial load
-          setTimeout(() => {
-              if (window.rawOutflowData && window.rawOutflowData.length > 0) {
-                 console.log("Attempting initial Raw Chart initialization after delay.");
-                 initializeRawChart();
-              } else {
-                 console.warn("Initial load: Raw outflow data not available, cannot initialize default chart.");
-                 // Optionally try to display message on canvas if it exists
-                 const canvasElement = document.getElementById('rawChart');
-                 if (canvasElement) {
-                     const rawCtx = canvasElement.getContext('2d');
-                     if (rawCtx) {
-                        rawCtx.clearRect(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
-                        rawCtx.textAlign = 'center';
-                        rawCtx.fillText('Data not available', rawCtx.canvas.width / 2, rawCtx.canvas.height / 2);
-                     }
-                 } else {
-                     console.warn("Initial load: Raw chart canvas element not found even after delay.");
-                 }
-              }
-          }, 250); // Increased delay to 250ms
-
-      }).catch(error => {
-          console.error("Error during initial data load sequence:", error);
-      });
-===
-    </content>
-  </change>
-   <change>
-    <description>Add logging inside initializeRawChart to check for canvas element.</description>
-    <search>
-===
-    // --- Chart.js Initialization Functions ---
-    
-    function initializeRawChart() {
-        const rawCtx = document.getElementById('rawChart')?.getContext('2d');
-        if (!rawCtx) {
-            console.warn("Raw chart canvas not found.");
-            return; 
+        });
+        
+        // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
+        // Ensure the raw tab is actually active before initializing
+        if (document.getElementById('tab-raw').classList.contains('active')) {
+             // Add a slightly longer delay for initial load
+             setTimeout(() => {
+                console.log("Attempting initial Raw Chart initialization after delay.");
+                initializeRawChart(); // This function now checks for data availability
+             }, 150); // Delay to ensure canvas is rendered
+        } else {
+            console.log("Initial load: Raw tab is not the default active tab.");
         }
-        // Check if data is loaded and valid
-===
-    </search>
-    <content>
-===
+        
+      }).catch(error => {
+        console.error("Error during initial data load sequence:", error);
+      });
+      
+    }); // End DOMContentLoaded
+
     // --- Chart.js Initialization Functions ---
     
     function initializeRawChart() {
-        console.log("initializeRawChart called.");
+        console.log("Attempting to initialize Raw Chart...");
         const canvasElement = document.getElementById('rawChart');
-        if (!canvasElement) {
-             console.warn("initializeRawChart: Canvas element with ID 'rawChart' not found in the DOM.");
+        // Ensure the container is visible (tab is active)
+        const container = document.getElementById('raw');
+        if (!canvasElement || !container || !container.classList.contains('active')) {
+             console.warn("initializeRawChart: Canvas element 'rawChart' not found or its tab is not active.");
+             if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; } // Clean up if switching away fast
              return;
         }
-        console.log("initializeRawChart: Canvas element found:", canvasElement);
+        // Check if an instance already exists for this canvas
+        if (rawChartInstance && rawChartInstance.canvas === canvasElement) {
+            console.log("Raw Chart instance already exists for this canvas.");
+            return; // Don't re-initialize if already present
+        }
+        // Destroy any old instance before creating a new one
+        if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; }
+
+        console.log("initializeRawChart: Canvas element found and tab is active.");
         const rawCtx = canvasElement.getContext('2d');
         if (!rawCtx) {
             console.warn("initializeRawChart: Failed to get 2D context from canvas.");
             return; 
         }
         // Check if data is loaded and valid
-===
-    </content>
-  </change>
-  <change>
-    <description>Modify React component to accept data via props and remove internal useEffect check.</description>
-    <search>
-===
-    // --- React Component for Distribution Tab ---
-    function DistributionAnalysisComponent() {
-        const [selectedYearGroup, setSelectedYearGroup] = useState('2yr');
-        const [chartHover, setChartHover] = useState(null); // Optional hover state
-        const [isDataReady, setIsDataReady] = useState(false);
-
-        // Check for data on mount and when year group changes
-        useEffect(() => {
-            const checkData = () => {
-                const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
-                const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
-                
-                const dataAvailable = window.boxPlotData && 
-                                      window.boxPlotData[lowKey] && 
-                                      window.boxPlotData[peakKey] &&
-                                      // Check deeper structure - ensure data was parsed correctly
-                                      Array.isArray(window.boxPlotData[lowKey]) && window.boxPlotData[lowKey].length > 0 &&
-                                      Array.isArray(window.boxPlotData[peakKey]) && window.boxPlotData[peakKey].length > 0; 
-                                      // Note: We calculate stats later, so just check if arrays exist and aren't empty
-                                      
-                setIsDataReady(!!dataAvailable);
-                if (!dataAvailable) {
-                     console.warn(`Distribution data for keys '${lowKey}' or '${peakKey}' is not ready or incomplete.`);
-                } else {
-                     console.log(`Distribution data for keys '${lowKey}' and '${peakKey}' appears ready.`);
+        if (!window.rawOutflowData || window.rawOutflowData.length === 0) {
+            console.warn("Raw outflow summary data is not available or empty. Cannot initialize chart.");
+            rawCtx.clearRect(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
+            rawCtx.textAlign = 'center';
+            rawCtx.fillText('Summary data not available', rawCtx.canvas.width / 2, rawCtx.canvas.height / 2);
+            return;
+        }
+        
+        console.log("Initializing Raw Chart with summary data:", window.rawOutflowData);
+        
+        try {
+            rawChartInstance = new Chart(rawCtx, {
+                type: 'bar',
+                data: {
+                labels: window.rawOutflowData.map(d => d.category),
+                datasets: [
+                    { label: 'Current Conditions', data: window.rawOutflowData.map(d => d.Current), backgroundColor: '#0056b3', borderRadius: 4 },
+                    { label: '2050 Baseline (ViT)', data: window.rawOutflowData.map(d => d.Baseline), backgroundColor: '#fd7e14', borderRadius: 4 },
+                    { label: 'Replanting Efforts', data: window.rawOutflowData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 },
+                    { label: 'Urban Development', data: window.rawOutflowData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 }
+                ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Average Max Outflow (cms)' } 
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false, // Prevent labels from being skipped
+                                maxRotation: 45, // Rotate labels if needed
+                                minRotation: 30
+                            }
+                        }
+                    }, 
+                    plugins: { 
+                        tooltip: { 
+                            callbacks: { 
+                                label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(3)} cms`; } 
+                            } 
+                        } 
+                    } 
                 }
-            };
-            checkData();
-        }, [selectedYearGroup]); // Re-check when selectedYearGroup changes
+            });
+            console.log("Raw Chart initialized successfully.");
+        } catch (error) {
+            console.error("Error initializing Raw Chart:", error);
+        }
+    }
 
-        // Regenerate data only if ready
-        const areaDistributionData = isDataReady ? generateAreaDistributionData(selectedYearGroup) : [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
-        const yAxisRange = getDistributionYAxisRange(selectedYearGroup);
+    function initializePercentageChart() {
+        console.log("Attempting to initialize Percentage Chart...");
+        const canvasElement = document.getElementById('percentageChart');
+        const container = document.getElementById('percentage');
+         if (!canvasElement || !container || !container.classList.contains('active')) {
+            console.warn("initializePercentageChart: Canvas element 'percentageChart' not found or its tab is not active.");
+             if (percentageChartInstance) { percentageChartInstance.destroy(); percentageChartInstance = null; }
+            return; 
+        }
+        if (percentageChartInstance && percentageChartInstance.canvas === canvasElement) {
+            console.log("Percentage Chart instance already exists.");
+            return;
+        }
+        if (percentageChartInstance) { percentageChartInstance.destroy(); percentageChartInstance = null; }
 
-        const DistributionTooltip = ({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-                const data = payload[0].payload; // Access the data point object
-                // Check if data properties exist before accessing them
-                if (!data || data.min === undefined) return null; 
-                return (
-                    <div className="bg-white p-3 rounded shadow-lg border border-gray-200 text-xs">
-                        <div className="font-semibold text-gray-800 mb-1">{data.name} - {data.type}</div>
-                        <div className="space-y-1">
-                            <div>Min: {data.min?.toFixed(4)} cms</div>
-                            <div>Q1: {data.q1?.toFixed(4)} cms</div>
-                            <div className="font-medium">Median: {data.median?.toFixed(4)} cms</div>
-                            <div>Q3: {data.q3?.toFixed(4)} cms</div>
-                            <div>Max: {data.max?.toFixed(4)} cms</div>
-                            <div className="font-medium">Average: {data.avg?.toFixed(4)} cms</div>
-                        </div>
-                    </div>
-                );
-            }
-            return null;
-        };
-        
-        // Display loading or error message if data isn't ready
-        if (!isDataReady) {
-             // Check which specific sheets/keys might be missing based on the selected group
-             const missingKeys = [];
-             const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
-             const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
-             
-             if (!window.boxPlotData || !window.boxPlotData[lowKey] || !Array.isArray(window.boxPlotData[lowKey]) || window.boxPlotData[lowKey].length === 0) {
-                 missingKeys.push(`'${lowKey}'`);
-             }
-             if (!window.boxPlotData || !window.boxPlotData[peakKey] || !Array.isArray(window.boxPlotData[peakKey]) || window.boxPlotData[peakKey].length === 0) {
-                 missingKeys.push(`'${peakKey}'`);
-             }
-
-             let message = `Loading data or data unavailable for the ${selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} period...`;
-             if (missingKeys.length > 0) {
-                 message = `Data unavailable. Please ensure the 'uncertainty.xlsx' file contains valid data in the sheet(s): ${missingKeys.join(' and ')}. Check console for details.`;
-             }
-
-             return (
-                <div>
-                    <h2 className="text-xl font-semibold text-gray-800 mb-1">Distribution Analysis</h2>
-                    <p className="text-red-600 bg-red-100 p-3 rounded border border-red-300 mb-4 text-sm italic">{message}</p>
-                     {/* Still show selectors */}
-                     <div className="flex flex-wrap mb-6">
-                        <button 
-                            onClick={() => setSelectedYearGroup('2yr')} 
-                            className={`px-4 py-2 mr-2 mb-2 text-sm rounded-md transition-colors ${
-                            selectedYearGroup === '2yr' 
-                                ? 'bg-blue-700 text-white' 
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                        >
-                            2-Year Return Period
-                        </button>
-                        <button 
-                            onClick={() => setSelectedYearGroup('200yr')} 
-                            className={`px-4 py-2 mb-2 text-sm rounded-md transition-colors ${
-                            selectedYearGroup === '200yr' 
-                                ? 'bg-blue-700 text-white' 
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                        >
-                            200-Year Return Period
-                        </button>
-                    </div>
-                </div>
-            );
+        console.log("initializePercentageChart: Canvas element found and tab is active.");
+        const percentageCtx = canvasElement.getContext('2d');
+        if (!percentageCtx) {
+            console.warn("initializePercentageChart: Failed to get 2D context.");
+            return;
+        }
+       if (!window.percentageChangeData || window.percentageChangeData.length === 0) {
+            console.warn("Percentage change summary data is not available or empty. Cannot initialize chart.");
+            percentageCtx.clearRect(0, 0, percentageCtx.canvas.width, percentageCtx.canvas.height);
+            percentageCtx.textAlign = 'center';
+            percentageCtx.fillText('Summary data not available', percentageCtx.canvas.width / 2, percentageCtx.canvas.height / 2);
+            return;
         }
 
+        console.log("Initializing Percentage Chart with summary data:", window.percentageChangeData);
 
-        return (
-            <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-1">
-                    Distribution Analysis ({selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} Return Period)
-                </h2>
-===
-    </search>
-    <content>
-===
-    // --- React Component for Distribution Tab ---
-    function DistributionAnalysisComponent(props) { // Accept props
-        const { initialData } = props; // Destructure the passed data
-        const [selectedYearGroup, setSelectedYearGroup] = useState('2yr');
-        const [chartHover, setChartHover] = useState(null); // Optional hover state
-        
-        // Determine data readiness based on the passed prop and selected group
-        const checkDataReadiness = () => {
-            const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
-            const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
-            
-            const dataAvailable = initialData && 
-                                  initialData[lowKey] && 
-                                  initialData[peakKey] &&
-                                  Array.isArray(initialData[lowKey]) && initialData[lowKey].length > 0 &&
-                                  Array.isArray(initialData[peakKey]) && initialData[peakKey].length > 0;
-            return !!dataAvailable;
-        };
+        try {
+            // Determine min/max for y-axis dynamically, with some padding
+            const allValues = window.percentageChangeData.flatMap(d => [d.Urban, d.Replant]);
+            const dataMin = Math.min(...allValues);
+            const dataMax = Math.max(...allValues);
+            const yMin = Math.floor(dataMin - Math.abs(dataMin * 0.1)); // Add 10% padding below min
+            const yMax = Math.ceil(dataMax + Math.abs(dataMax * 0.1)); // Add 10% padding above max
 
-        const isDataReady = checkDataReadiness(); // Check readiness on each render
+            percentageChartInstance = new Chart(percentageCtx, {
+                type: 'bar',
+                data: {
+                labels: window.percentageChangeData.map(d => d.category),
+                datasets: [
+                    { label: 'Urban vs 2050', data: window.percentageChangeData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 },
+                    { label: 'Replant vs 2050', data: window.percentageChangeData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 }
+                ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { 
+                            title: { display: true, text: 'Change from Baseline (%)' }, 
+                            ticks: { callback: function(value) { return value.toFixed(1) + '%'; } },
+                            min: yMin, // Dynamic min
+                            max: yMax  // Dynamic max
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false, 
+                                maxRotation: 45,
+                                minRotation: 30
+                            }
+                        }
+                    }, 
+                    plugins: { 
+                        tooltip: { 
+                            callbacks: { 
+                                label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(2)}%`; } 
+                            } 
+                        } 
+                    } 
+                }
+            });
+             console.log("Percentage Chart initialized successfully.");
+        } catch (error) {
+             console.error("Error initializing Percentage Chart:", error);
+        }
+    }
 
-        // Regenerate data only if ready, using the prop
-        const areaDistributionData = isDataReady ? generateAreaDistributionData(selectedYearGroup, initialData) : [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
-        const yAxisRange = getDistributionYAxisRange(selectedYearGroup);
+    function initializeTrendChart() {
+        console.log("Attempting to initialize Trend Chart...");
+        const canvasElement = document.getElementById('trendChart');
+        const container = document.getElementById('trends');
+        if (!canvasElement || !container || !container.classList.contains('active')) {
+            console.warn("initializeTrendChart: Canvas element 'trendChart' not found or its tab is not active.");
+             if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
+            return;
+        }
+         if (trendChartInstance && trendChartInstance.canvas === canvasElement) {
+            console.log("Trend Chart instance already exists.");
+            return;
+        }
+        if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
 
-        const DistributionTooltip = ({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-                const data = payload[0].payload; // Access the data point object
-                // Check if data properties exist before accessing them
-                if (!data || data.min === undefined) return null; 
-                return (
-                    <div className="bg-white p-3 rounded shadow-lg border border-gray-200 text-xs">
-                        <div className="font-semibold text-gray-800 mb-1">{data.name} - {data.type}</div>
-                        <div className="space-y-1">
-                            <div>Min: {data.min?.toFixed(4)} cms</div>
-                            <div>Q1: {data.q1?.toFixed(4)} cms</div>
-                            <div className="font-medium">Median: {data.median?.toFixed(4)} cms</div>
-                            <div>Q3: {data.q3?.toFixed(4)} cms</div>
-                            <div>Max: {data.max?.toFixed(4)} cms</div>
-                            <div className="font-medium">Average: {data.avg?.toFixed(4)} cms</div>
-                        </div>
-                    </div>
-                );
-            }
-            return null;
-        };
-        
-        // Display loading or error message if data isn't ready
-        if (!isDataReady) {
-             // Check which specific sheets/keys might be missing based on the selected group
-             const missingKeys = [];
-             const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
-             const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
-             
-             // Check the passed initialData prop
-             if (!initialData || !initialData[lowKey] || !Array.isArray(initialData[lowKey]) || initialData[lowKey].length === 0) {
-                 missingKeys.push(`'${lowKey}'`);
-             }
-             if (!initialData || !initialData[peakKey] || !Array.isArray(initialData[peakKey]) || initialData[peakKey].length === 0) {
-                 missingKeys.push(`'${peakKey}'`);
-             }
-
-             let message = `Loading data or data unavailable for the ${selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} period...`;
-             if (missingKeys.length > 0) {
-                 message = `Data unavailable. Please ensure the 'uncertainty.xlsx' file contains valid data in the sheet(s): ${missingKeys.join(' and ')}. Check console for details.`;
-             } else if (!initialData) {
-                 message = `Data not passed correctly to the component. Check console logs.`;
-             }
-
-
-             return (
-                <div>
-                    <h2 className="text-xl font-semibold text-gray-800 mb-1">Distribution Analysis</h2>
-                    <p className="text-red-600 bg-red-100 p-3 rounded border border-red-300 mb-4 text-sm italic">{message}</p>
-                     {/* Still show selectors */}
-                     <div className="flex flex-wrap mb-6">
-                        <button 
-                            onClick={() => setSelectedYearGroup('2yr')} 
-                            className={`px-4 py-2 mr-2 mb-2 text-sm rounded-md transition-colors ${
-                            selectedYearGroup === '2yr' 
-                                ? 'bg-blue-700 text-white' 
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                        >
-                            2-Year Return Period
-                        </button>
-                        <button 
-                            onClick={() => setSelectedYearGroup('200yr')} 
-                            className={`px-4 py-2 mb-2 text-sm rounded-md transition-colors ${
-                            selectedYearGroup === '200yr' 
-                                ? 'bg-blue-700 text-white' 
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                        >
-                            200-Year Return Period
-                        </button>
-                    </div>
-                </div>
-            );
+        console.log("initializeTrendChart: Canvas element found and tab is active.");
+        const trendCtx = canvasElement.getContext('2d');
+         if (!trendCtx) {
+            console.warn("initializeTrendChart: Failed to get 2D context.");
+            return;
+        }
+        if (!window.trendData || window.trendData.length === 0) {
+            console.warn("Trend summary data is not available or empty. Cannot initialize chart.");
+             trendCtx.clearRect(0, 0, trendCtx.canvas.width, trendCtx.canvas.height);
+            trendCtx.textAlign = 'center';
+            trendCtx.fillText('Summary data not available', trendCtx.canvas.width / 2, trendCtx.canvas.height / 2);
+            return;
         }
 
+        console.log("Initializing Trend Chart with summary data:", window.trendData);
 
-        return (
-            <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-1">
-                    Distribution Analysis ({selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} Return Period)
-                </h2>
-===
-    </content>
-  </change>
-  <change>
-    <description>Update generateAreaDistributionData to accept boxPlotData as an argument.</description>
-    <search>
-===
+        try {
+             // Determine min/max for y-axis dynamically, ensuring 0 is included
+            const allValues = window.trendData.flatMap(d => [d.Baseline, d.Replant, d.Urban]);
+            const dataMin = Math.min(0, ...allValues); // Include 0
+            const dataMax = Math.max(0, ...allValues); // Include 0
+            const yMin = Math.floor(dataMin - Math.abs(dataMin * 0.1)); // Add 10% padding below min
+            const yMax = Math.ceil(dataMax + Math.abs(dataMax * 0.1)); // Add 10% padding above max
+
+            trendChartInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                labels: window.trendData.map(d => d.name),
+                datasets: [
+                    // Plot Baseline, Replant, Urban first
+                     { label: '2050 Baseline (ViT)', data: window.trendData.map(d => d.Baseline), borderColor: '#fd7e14', backgroundColor: '#fd7e14', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                    { label: 'Replanting Efforts', data: window.trendData.map(d => d.Replant), borderColor: '#17a2b8', backgroundColor: '#17a2b8', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                    { label: 'Urban Development', data: window.trendData.map(d => d.Urban), borderColor: '#dc3545', backgroundColor: '#dc3545', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                     // Plot Current (0 line) last so it's potentially on top visually if needed, though less critical for line
+                    { label: 'Current Conditions', data: window.trendData.map(d => d.Current), borderColor: '#0056b3', backgroundColor: '#0056b3', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { 
+                            title: { display: true, text: 'Change from Current (%)' }, 
+                            ticks: { callback: function(value) { return value.toFixed(0) + '%'; } }, // Use 0 decimal places for cleaner axis
+                            min: yMin, // Dynamic min
+                            max: yMax  // Dynamic max
+                        },
+                        x: {
+                             ticks: {
+                                autoSkip: false, 
+                                maxRotation: 45,
+                                minRotation: 30
+                            }
+                        }
+                    }, 
+                    plugins: { 
+                        tooltip: { 
+                            callbacks: { 
+                                label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(1)}%`; }, 
+                                title: function(context) { return `${context[0].label}`; } // Use category name as title
+                            } 
+                        } 
+                    } 
+                }
+            });
+             console.log("Trend Chart initialized successfully.");
+        } catch (error) {
+            console.error("Error initializing Trend Chart:", error);
+        }
+    }
+    
+  </script>
+
+  <!-- React Component Definition (using Babel for JSX) -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React; // Added useMemo
+    const { AreaChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+    // --- Helper Functions (copied/adapted from modern-water-dashboard.jsx) ---
+    const calculateStats = (data) => {
+        if (!data || !Array.isArray(data) || data.length === 0) {
+             // console.warn("calculateStats received invalid data:", data);
+             return { min: NaN, max: NaN, q1: NaN, median: NaN, q3: NaN, avg: NaN };
+        }
+        const numericData = data.map(Number).filter(n => !isNaN(n)); // Ensure numeric
+        if (numericData.length === 0) {
+             // console.warn("calculateStats found no numeric data after filtering.");
+             return { min: NaN, max: NaN, q1: NaN, median: NaN, q3: NaN, avg: NaN };
+        }
+        const sorted = [...numericData].sort((a, b) => a - b);
+        const len = sorted.length;
+        const min = sorted[0];
+        const max = sorted[len - 1];
+        // More robust quantile calculation (linear interpolation)
+        const quantile = (p) => {
+            const pos = (len - 1) * p;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+            if (sorted[base + 1] !== undefined) {
+                return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+            } else {
+                return sorted[base];
+            }
+        };
+        const q1 = quantile(0.25);
+        const median = quantile(0.5);
+        const q3 = quantile(0.75);
+        const avg = sorted.reduce((a, b) => a + b, 0) / len;
+        
+        return { min, max, q1, median, q3, avg };
     };
 
-    const generateAreaDistributionData = (yearGroup) => {
-        // Map yearGroup to the correct sheet names/keys
+    const getDistributionYAxisRange = (yearGroup, allData) => {
+        // Calculate range dynamically based on actual data min/max across both low/peak for the selected year group
         const lowKey = yearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
         const peakKey = yearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
+        
+        let overallMin = Infinity;
+        let overallMax = -Infinity;
 
-        // Check if boxPlotData and the required keys exist and contain data
-        if (!window.boxPlotData || 
-            !window.boxPlotData[lowKey] || !Array.isArray(window.boxPlotData[lowKey]) || window.boxPlotData[lowKey].length === 0 ||
-            !window.boxPlotData[peakKey] || !Array.isArray(window.boxPlotData[peakKey]) || window.boxPlotData[peakKey].length === 0) {
-            console.warn(`Box plot data for keys '${lowKey}' or '${peakKey}' not found, is not an array, or is empty.`);
-            return [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
+        const updateMinMax = (dataArray) => {
+             if (dataArray && dataArray.length > 0) {
+                const numericData = dataArray.map(Number).filter(n => !isNaN(n));
+                if (numericData.length > 0) {
+                    overallMin = Math.min(overallMin, ...numericData);
+                    overallMax = Math.max(overallMax, ...numericData);
+                }
+            }
+        };
+
+        if (allData && allData[lowKey]) {
+            updateMinMax(allData[lowKey].current);
+            updateMinMax(allData[lowKey].baseline);
+            updateMinMax(allData[lowKey].replant);
+            updateMinMax(allData[lowKey].urban);
+        }
+         if (allData && allData[peakKey]) {
+            updateMinMax(allData[peakKey].current);
+            updateMinMax(allData[peakKey].baseline);
+            updateMinMax(allData[peakKey].replant);
+            updateMinMax(allData[peakKey].urban);
         }
 
-        // Helper to extract numeric data for a scenario based on potential column names
-===
-    </search>
-    <content>
-===
+        if (overallMin === Infinity || overallMax === -Infinity) {
+            // Fallback if no data found
+            return yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
+        }
+
+        // Add some padding
+        const padding = (overallMax - overallMin) * 0.1; // 10% padding
+        const domainMin = Math.max(0, Math.floor(overallMin - padding)); // Ensure min is not negative unless data is
+        const domainMax = Math.ceil(overallMax + padding);
+
+        // console.log(`Calculated Y-axis range for ${yearGroup}: [${domainMin}, ${domainMax}]`);
+        return [domainMin, domainMax];
     };
 
     // Update function signature to accept data as argument
@@ -456,55 +951,399 @@ The logs show data loading is successful, but issues remain with chart initializ
         const peakKey = yearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
 
         // Check if the passed boxPlotData and the required keys exist and contain data
-        if (!boxPlotData || 
-            !boxPlotData[lowKey] || !Array.isArray(boxPlotData[lowKey]) || boxPlotData[lowKey].length === 0 ||
-            !boxPlotData[peakKey] || !Array.isArray(boxPlotData[peakKey]) || boxPlotData[peakKey].length === 0) {
-            console.warn(`generateAreaDistributionData: Box plot data for keys '${lowKey}' or '${peakKey}' not found in passed data, is not an array, or is empty.`);
+         if (!boxPlotData || !boxPlotData[lowKey] || !boxPlotData[peakKey] ||
+             !boxPlotData[lowKey].current || !boxPlotData[peakKey].current ) { // Basic check for existence
+            console.warn(`generateAreaDistributionData: Box plot data for keys '${lowKey}' or '${peakKey}' not found or incomplete in passed data.`);
             return [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
         }
 
-        // Helper to extract numeric data for a scenario based on potential column names
-===
-    </content>
-  </change>
-   <change>
-    <description>Update generateAreaDistributionData calls within itself to use the passed 'boxPlotData' argument.</description>
-    <search>
-===
+        // Calculate stats on the numerical arrays stored in boxPlotData
+        const lowStats = {
+            current: calculateStats(boxPlotData[lowKey].current),
+            baseline: calculateStats(boxPlotData[lowKey].baseline),
+            replant: calculateStats(boxPlotData[lowKey].replant),
+            urban: calculateStats(boxPlotData[lowKey].urban)
         };
-
-        // Extract data for each scenario from the LOW sheet data
-        const lowCurrentData = extractScenarioData(window.boxPlotData[lowKey], 'current');
-        const lowBaselineData = extractScenarioData(window.boxPlotData[lowKey], 'baseline');
-        const lowReplantData = extractScenarioData(window.boxPlotData[lowKey], 'replant');
-        const lowUrbanData = extractScenarioData(window.boxPlotData[lowKey], 'urban');
-
-        // Extract data for each scenario from the PEAK sheet data
-        const peakCurrentData = extractScenarioData(window.boxPlotData[peakKey], 'current');
-        const peakBaselineData = extractScenarioData(window.boxPlotData[peakKey], 'baseline');
-        const peakReplantData = extractScenarioData(window.boxPlotData[peakKey], 'replant');
-        const peakUrbanData = extractScenarioData(window.boxPlotData[peakKey], 'urban');
-
-        // Calculate stats on the extracted numerical arrays
-===
-    </search>
-    <content>
-===
+        
+        const peakStats = {
+            current: calculateStats(boxPlotData[peakKey].current),
+            baseline: calculateStats(boxPlotData[peakKey].baseline),
+            replant: calculateStats(boxPlotData[peakKey].replant),
+            urban: calculateStats(boxPlotData[peakKey].urban)
         };
+        
+        // Map stats to the format needed by the chart
+        const mapData = (stats, type) => ([
+            { name: 'Current', ...stats.current, type },
+            { name: '2050 Baseline', ...stats.baseline, type }, // Match name used elsewhere
+            { name: 'Replant', ...stats.replant, type }, // Match name used elsewhere
+            { name: 'Urban', ...stats.urban, type } // Match name used elsewhere
+        ]);
 
-        // Extract data for each scenario from the LOW sheet data using the passed argument
-        const lowCurrentData = extractScenarioData(boxPlotData[lowKey], 'current');
-        const lowBaselineData = extractScenarioData(boxPlotData[lowKey], 'baseline');
-        const lowReplantData = extractScenarioData(boxPlotData[lowKey], 'replant');
-        const lowUrbanData = extractScenarioData(boxPlotData[lowKey], 'urban');
+        return [
+            { group: "Low", data: mapData(lowStats, "Low") },
+            { group: "Peak", data: mapData(peakStats, "Peak") }
+        ];
+    };
 
-        // Extract data for each scenario from the PEAK sheet data using the passed argument
-        const peakCurrentData = extractScenarioData(boxPlotData[peakKey], 'current');
-        const peakBaselineData = extractScenarioData(boxPlotData[peakKey], 'baseline');
-        const peakReplantData = extractScenarioData(boxPlotData[peakKey], 'replant');
-        const peakUrbanData = extractScenarioData(boxPlotData[peakKey], 'urban');
+    // --- React Component for Distribution Tab ---
+    function DistributionAnalysisComponent(props) { // Accept props
+        const { initialData } = props; // Destructure the passed data
+        const [selectedYearGroup, setSelectedYearGroup] = useState('2yr');
+        const [chartHover, setChartHover] = useState(null); // Optional hover state
+        
+        // Memoize data generation and axis range calculation
+        const { areaDistributionData, yAxisRange, isDataReady } = useMemo(() => {
+            const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
+            const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
+            
+            // More robust check: ensure the keys exist and the arrays within have length > 0
+            const dataAvailable = initialData && 
+                                initialData[lowKey] && 
+                                initialData[peakKey] &&
+                                Array.isArray(initialData[lowKey].current) && initialData[lowKey].current.length > 0 &&
+                                Array.isArray(initialData[lowKey].baseline) && initialData[lowKey].baseline.length > 0 &&
+                                Array.isArray(initialData[lowKey].replant) && initialData[lowKey].replant.length > 0 &&
+                                Array.isArray(initialData[lowKey].urban) && initialData[lowKey].urban.length > 0 &&
+                                Array.isArray(initialData[peakKey].current) && initialData[peakKey].current.length > 0 &&
+                                Array.isArray(initialData[peakKey].baseline) && initialData[peakKey].baseline.length > 0 &&
+                                Array.isArray(initialData[peakKey].replant) && initialData[peakKey].replant.length > 0 &&
+                                Array.isArray(initialData[peakKey].urban) && initialData[peakKey].urban.length > 0;
 
-        // Calculate stats on the extracted numerical arrays
+            if (!dataAvailable) {
+                 console.warn(`Distribution data for keys '${lowKey}' or '${peakKey}' is not ready or incomplete in initialData.`);
+                 return { areaDistributionData: [{ group: "Low", data: [] }, { group: "Peak", data: [] }], yAxisRange: [0, 1], isDataReady: false };
+            }
+
+            console.log(`Distribution data for keys '${lowKey}' and '${peakKey}' appears ready. Generating chart data.`);
+            const generatedData = generateAreaDistributionData(selectedYearGroup, initialData);
+            const range = getDistributionYAxisRange(selectedYearGroup, initialData); // Pass initialData for dynamic range
+            return { areaDistributionData: generatedData, yAxisRange: range, isDataReady: true };
+
+        }, [selectedYearGroup, initialData]); // Recalculate only when these change
+
+        const DistributionTooltip = ({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+                // Find the payload associated with the Area or Line (not just the hovered point)
+                const dataPoint = payload.find(p => p.payload); // Find first payload with a 'payload' property
+                if (!dataPoint || !dataPoint.payload) return null; 
+                
+                const data = dataPoint.payload; // Access the data point object
+                
+                // Check if data properties exist before accessing them
+                if (!data || data.min === undefined || isNaN(data.min)) return null; 
+                
+                return (
+                    <div className="bg-white p-3 rounded shadow-lg border border-gray-200 text-xs" style={{ zIndex: 1100 }}> {/* Ensure high z-index */}
+                        <div className="font-semibold text-gray-800 mb-1">{data.name} - {data.type}</div>
+                        <div className="space-y-1">
+                            <div>Min: {data.min?.toFixed(3)} cms</div>
+                            <div>Q1 (25%): {data.q1?.toFixed(3)} cms</div>
+                            <div className="font-medium">Median (50%): {data.median?.toFixed(3)} cms</div>
+                            <div>Q3 (75%): {data.q3?.toFixed(3)} cms</div>
+                            <div>Max: {data.max?.toFixed(3)} cms</div>
+                            <div className="font-medium">Average: {data.avg?.toFixed(3)} cms</div>
+                        </div>
+                    </div>
+                );
+            }
+            return null;
+        };
+        
+        // Display loading or error message if data isn't ready
+        if (!isDataReady) {
+             const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
+             const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
+             let message = `Loading data or data unavailable for the ${selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} period...`;
+             if (!initialData) {
+                 message = `Data not passed correctly to the component. Check console logs.`;
+             } else {
+                  message = `Data unavailable. Please ensure the 'uncertainty.xlsx' file contains valid numeric data in the expected columns for sheets: '${lowKey}' and '${peakKey}'. Check console for details.`;
+             }
+
+             return (
+                <div>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-1">Distribution Analysis</h2>
+                    <p className="text-red-600 bg-red-100 p-3 rounded border border-red-300 mb-4 text-sm italic">{message}</p>
+                     {/* Still show selectors */}
+                     <div className="flex flex-wrap mb-6">
+                        <button 
+                            onClick={() => setSelectedYearGroup('2yr')} 
+                            className={`px-4 py-2 mr-2 mb-2 text-sm rounded-md transition-colors ${
+                            selectedYearGroup === '2yr' 
+                                ? 'bg-blue-700 text-white' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            2-Year Return Period
+                        </button>
+                        <button 
+                            onClick={() => setSelectedYearGroup('200yr')} 
+                            className={`px-4 py-2 mb-2 text-sm rounded-md transition-colors ${
+                            selectedYearGroup === '200yr' 
+                                ? 'bg-blue-700 text-white' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            200-Year Return Period
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div>
+                <h2 className="text-xl font-semibold text-gray-800 mb-1">
+                    Distribution Analysis ({selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} Return Period)
+                </h2>
+                <p className="text-gray-600 mb-4 text-sm italic">Distribution across 100 samples</p>
+                
+                {/* Period selector */}
+                <div className="flex flex-wrap mb-6">
+                    <button 
+                        onClick={() => setSelectedYearGroup('2yr')} 
+                        className={`px-4 py-2 mr-2 mb-2 text-sm rounded-md transition-colors ${
+                        selectedYearGroup === '2yr' 
+                            ? 'bg-blue-700 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                        2-Year Return Period
+                    </button>
+                    <button 
+                        onClick={() => setSelectedYearGroup('200yr')} 
+                        className={`px-4 py-2 mb-2 text-sm rounded-md transition-colors ${
+                        selectedYearGroup === '200yr' 
+                            ? 'bg-blue-700 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                        200-Year Return Period
+                    </button>
+                </div>
+                
+                <div 
+                    className="bg-blue-50 p-4 rounded-lg mb-6 border-l-4 border-blue-500"
+                    onMouseEnter={() => setChartHover('dist')}
+                    onMouseLeave={() => setChartHover(null)}
+                >
+                    <p className={`transition-opacity duration-300 ${chartHover === 'dist' ? 'opacity-100' : 'opacity-70'} text-sm`}>
+                        This chart visualizes the statistical distribution (min, max, quartiles, median, average) of max outflow values 
+                        for both low and peak events in the {selectedYearGroup === '2yr' ? '2-year' : '200-year'} return period, based on 100 samples per scenario.
+                    </p>
+                </div>
+
+                {/* Legend - Updated */}
+                <div className="flex items-center justify-center mb-6 text-xs text-gray-600 flex-wrap">
+                    <div className="flex items-center mr-4 mb-2">
+                        <div className="w-4 h-4 bg-blue-200 opacity-60 mr-1 border border-blue-400"></div> {/* Example for Low */}
+                        <div className="w-4 h-4 bg-red-200 opacity-60 mr-1 border border-red-400"></div> {/* Example for Peak */}
+                        <span>= 25%-75% Quartiles</span>
+                    </div>
+                    <div className="flex items-center mr-4 mb-2">
+                         <div className="w-4 h-px bg-blue-700 mx-1"></div> {/* Example for Low */}
+                         <div className="w-4 h-px bg-red-700 mx-1"></div> {/* Example for Peak */}
+                        <span>= Median</span>
+                    </div>
+                    <div className="flex items-center mr-4 mb-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500 mr-1"></div> {/* Example for Low */}
+                        <div className="w-2 h-2 rounded-full bg-red-500 mr-1"></div> {/* Example for Peak */}
+                        <span>= Average</span>
+                    </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Low Event Chart - Refactored */}
+                    <div>
+                        <h3 className="text-lg font-medium text-center mb-2 text-gray-700">Low Events</h3>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                    data={areaDistributionData[0].data}
+                                    margin={{ top: 5, right: 20, left: 15, bottom: 5 }} // Adjusted left margin
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+                                    <YAxis 
+                                        domain={yAxisRange}
+                                        label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 }, dx:-15 }} // Adjusted dx
+                                        tick={{ fontSize: 10 }}
+                                        tickFormatter={(val) => val.toFixed(1)}
+                                        allowDataOverflow={true} // Prevent clipping of area/line near boundaries
+                                        width={40} // Explicit width for YAxis
+                                    />
+                                    <Tooltip content={<DistributionTooltip />} wrapperStyle={{ zIndex: 1100 }} />
+                                    
+                                    {/* Area for Q1-Q3 Range */}
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey={d => [d.q1, d.q3]} // Use accessor function for range
+                                        stroke="none" 
+                                        fill="rgba(0,86,179,0.2)" // Blue fill for low events
+                                        fillOpacity={0.6}
+                                        name="Quartile Range (Q1-Q3)"
+                                        isAnimationActive={false} // Disable animation for range area
+                                    />
+
+                                    {/* Median Line */}
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="median" 
+                                        stroke="#0056b3" // Darker blue for median
+                                        strokeWidth={2} 
+                                        dot={false} 
+                                        activeDot={false} 
+                                        name="Median"
+                                        isAnimationActive={true} 
+                                    />
+                                    
+                                    {/* Average Dot (using Line with only dots) */}
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="avg" 
+                                        stroke="transparent" // Hide the line itself
+                                        dot={{ r: 4, fill: '#2196F3', strokeWidth: 1, stroke: '#0056b3' }}
+                                        activeDot={{ r: 6 }}
+                                        name="Average"
+                                        isAnimationActive={true} 
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    
+                    {/* Peak Event Chart - Refactored */}
+                    <div>
+                        <h3 className="text-lg font-medium text-center mb-2 text-gray-700">Peak Events</h3>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                    data={areaDistributionData[1].data}
+                                    margin={{ top: 5, right: 20, left: 15, bottom: 5 }} // Adjusted left margin
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+                                    <YAxis 
+                                        domain={yAxisRange}
+                                        label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 }, dx:-15 }} // Adjusted dx
+                                        tick={{ fontSize: 10 }}
+                                        tickFormatter={(val) => val.toFixed(1)}
+                                        allowDataOverflow={true} // Prevent clipping
+                                        width={40} // Explicit width
+                                    />
+                                     <Tooltip content={<DistributionTooltip />} wrapperStyle={{ zIndex: 1100 }} />
+                                    
+                                    {/* Area for Q1-Q3 Range */}
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey={d => [d.q1, d.q3]} // Use accessor function
+                                        stroke="none" 
+                                        fill="rgba(220,53,69,0.2)" // Red fill for peak events
+                                        fillOpacity={0.6}
+                                        name="Quartile Range (Q1-Q3)"
+                                        isAnimationActive={false}
+                                    />
+
+                                    {/* Median Line */}
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="median" 
+                                        stroke="#dc3545" // Darker red for median
+                                        strokeWidth={2} 
+                                        dot={false} 
+                                        activeDot={false} 
+                                        name="Median"
+                                        isAnimationActive={true}
+                                    />
+                                    
+                                    {/* Average Dot */}
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="avg" 
+                                        stroke="transparent" 
+                                        dot={{ r: 4, fill: '#dc3545', strokeWidth: 1, stroke: '#b02a37' }}
+                                        activeDot={{ r: 6 }}
+                                        name="Average"
+                                        isAnimationActive={true}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Statistics and Insights */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <div className="bg-gray-100 p-4 rounded-lg">
+                        <h3 className="font-semibold text-lg mb-2 text-gray-800">Key Statistics (Calculated from Samples)</h3>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white rounded-lg overflow-hidden text-xs">
+                                <thead className="bg-gray-200">
+                                <tr>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Scenario</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Type</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Min</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Max</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Average</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Median</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {areaDistributionData[0].data.map((item, index) => (
+                                    <tr key={`low-${index}`} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                    <td className="px-3 py-2 text-gray-800 font-medium">{item.name}</td>
+                                    <td className="px-3 py-2 text-gray-800">Low</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.min?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.max?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800 font-semibold">{item.avg?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.median?.toFixed(3)}</td>
+                                    </tr>
+                                ))}
+                                {areaDistributionData[1].data.map((item, index) => (
+                                    <tr key={`peak-${index}`} className={index % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                                    <td className="px-3 py-2 text-gray-800 font-medium">{item.name}</td>
+                                    <td className="px-3 py-2 text-gray-800">Peak</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.min?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.max?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800 font-semibold">{item.avg?.toFixed(3)}</td>
+                                     <td className="px-3 py-2 text-gray-800">{item.median?.toFixed(3)}</td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-100 p-4 rounded-lg">
+                        <h3 className="font-semibold text-lg mb-2 text-gray-800">Key Insights</h3>
+                        {selectedYearGroup === '2yr' ? (
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
+                            <li>The <span className="font-medium">Urban</span> scenario shows the highest average peak flow values (~{areaDistributionData[1].data.find(d=>d.name==='Urban')?.avg?.toFixed(2)} cms).</li>
+                            <li>The <span className="font-medium">Current</span> conditions have the lowest average outflow values across both low (~{areaDistributionData[0].data.find(d=>d.name==='Current')?.avg?.toFixed(2)} cms) and peak events (~{areaDistributionData[1].data.find(d=>d.name==='Current')?.avg?.toFixed(2)} cms).</li>
+                            <li>The <span className="font-medium">Replant</span> strategy shows noticeable reduction compared to Baseline, especially for peak events.</li>
+                            <li>The distribution (spread between min/max and quartiles) varies between scenarios.</li>
+                        </ul>
+                        ) : (
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
+                            <li>All future scenarios show dramatically higher average values compared to current conditions for 200-year events.</li>
+                            <li>The <span className="font-medium">Replant</span> scenario offers some reduction compared to Baseline, but the overall outflow remains high.</li>
+                            <li>The relative impact of <span className="font-medium">Urban</span> development vs Baseline might be less pronounced during these extreme events compared to 2-year events.</li>
+                            <li>The gap between low and peak values, and the overall range of values, is much wider than in 2-year return periods.</li>
+                        </ul>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
+    // Make the component globally available for the main script
+    window.DistributionAnalysisComponent = DistributionAnalysisComponent;
+
+  </script>
+</body>
+</html>
 ===
     </content>
   </change>
