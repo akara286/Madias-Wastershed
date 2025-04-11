@@ -270,230 +270,390 @@
   
   <footer class="footer">
     <div class="container">
-      <p>Max Outflow Uncertainty Dashboard | Data from uncertainty.csv</p>
+      <p>Max Outflow Uncertainty Dashboard | Data from uncertainty.xlsx</p>
     </div>
   </footer>
 
   <script>
-    // Static data for backup (will be replaced by Excel data if available)
-    window.rawOutflowData = [
-      { category: '2yr - Low', Current: 1.216666, Baseline: 1.326637, Replant: 1.261602, Urban: 1.332193 },
-      { category: '2yr - Peak', Current: 2.198027, Baseline: 2.427346, Replant: 2.323949, Urban: 2.43629 },
-      { category: '200yr - Low', Current: 7.177433, Baseline: 11.651535, Replant: 11.504162, Urban: 11.678737 },
-      { category: '200yr - Peak', Current: 15.84633, Baseline: 23.097431, Replant: 22.843051, Urban: 23.118788 }
-    ];
-    
-    window.percentageChangeData = [
-      { category: '2yr - Low', Urban: 0.4188, Replant: -4.9022 },
-      { category: '2yr - Peak', Urban: 0.3685, Replant: -4.2597 },
-      { category: '200yr - Low', Urban: 0.2335, Replant: -1.2648 },
-      { category: '200yr - Peak', Urban: 0.0925, Replant: -1.1013 }
-    ];
-    
-    window.trendData = window.rawOutflowData.map(item => ({
-      name: item.category,
-      Current: 0, // Current is always 0% (reference point)
-      Baseline: ((item.Baseline - item.Current) / item.Current) * 100,
-      Replant: ((item.Replant - item.Current) / item.Current) * 100,
-      Urban: ((item.Urban - item.Current) / item.Current) * 100,
-      rawCurrent: item.Current,
-      rawBaseline: item.Baseline,
-      rawReplant: item.Replant,
-      rawUrban: item.Urban,
-    }));
-    
-    window.boxPlotData = {
-      '2yr-low': { current: [1.20, 1.21, 1.22, 1.23, 1.22, 1.21, 1.22, 1.21, 1.22, 1.20], baseline: [1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.33, 1.32], replant: [1.25, 1.26, 1.26, 1.27, 1.26, 1.25, 1.26, 1.27, 1.25, 1.26], urban: [1.33, 1.34, 1.33, 1.33, 1.32, 1.33, 1.34, 1.33, 1.33, 1.32] },
-      '2yr-peak': { current: [2.1956, 2.2103, 2.209, 2.2096, 2.2119, 2.2083, 2.2094, 2.2116, 2.1943, 2.185], baseline: [2.4027, 2.4481, 2.4328, 2.4313, 2.4261, 2.4392, 2.4263, 2.357, 2.4254, 2.4365], replant: [2.3327, 2.3218, 2.3366, 2.339, 2.3296, 2.327, 2.3238, 2.3082, 2.3203, 2.3035], urban: [2.4239, 2.4264, 2.4532, 2.4207, 2.4541, 2.4471, 2.4446, 2.4456, 2.4229, 2.4531] },
-      '200yr-low': { current: [7.10, 7.21, 7.17, 7.19, 7.15, 7.22, 7.14, 7.18, 7.16, 7.20], baseline: [11.58, 11.66, 11.63, 11.69, 11.61, 11.67, 11.60, 11.70, 11.62, 11.64], replant: [11.44, 11.52, 11.48, 11.53, 11.47, 11.51, 11.45, 11.54, 11.46, 11.50], urban: [11.61, 11.70, 11.65, 11.72, 11.64, 11.69, 11.63, 11.73, 11.66, 11.68] },
-      '200yr-peak': { current: [15.71, 15.82, 15.90, 15.85, 15.78, 15.93, 15.88, 15.77, 15.80, 15.95], baseline: [22.95, 23.12, 23.21, 23.05, 23.14, 23.07, 23.18, 22.97, 23.16, 23.09], replant: [22.71, 22.85, 22.81, 22.92, 22.77, 22.88, 22.80, 22.93, 22.82, 22.75], urban: [23.01, 23.15, 23.08, 23.19, 23.06, 23.17, 23.09, 23.21, 23.11, 23.05] }
-    };
+    // Initialize data containers - will be filled from Excel
+    window.rawOutflowData = [];
+    window.percentageChangeData = [];
+    window.trendData = [];
+    window.boxPlotData = {};
     
     // Chart.js Instances (for non-React tabs)
     let rawChartInstance, percentageChartInstance, trendChartInstance;
 
     // Load data from uncertainty.xlsx using XLSX library
-    // Try to load Excel data, but keep existing data if loading fails
-    async function tryLoadExcelData() {
+    // Load data exclusively from Excel file
+    async function loadExcelData() {
+      console.log("Attempting to load Excel data...");
       try {
-        console.log("Attempting to load Excel data...");
+        // Show loading indicators
+        document.querySelectorAll('.chart-container').forEach(container => {
+          container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><p>Loading data from Excel...</p></div>';
+        });
+        
         const response = await fetch('uncertainty.xlsx');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         
-        console.log("Excel file loaded, sheet names:", workbook.SheetNames);
+        console.log("Excel file loaded successfully. Sheets:", workbook.SheetNames);
         
-        // Only replace existing data if we successfully parse something
-        if (workbook.SheetNames.length > 0) {
-          // Try to load data from specific sheets or use first available
+        if (workbook.SheetNames.length === 0) {
+          throw new Error("Excel file contains no sheets");
+        }
+        
+        // Function to safely parse sheet to JSON and log issues
+        const safeSheetToJson = (sheetName) => {
+          const sheet = workbook.Sheets[sheetName];
+          if (!sheet) {
+            console.warn(`Sheet "${sheetName}" not found.`);
+            return []; // Return empty array if sheet is missing
+          }
           try {
-            // For raw data - check first sheet
-            if (workbook.SheetNames[0]) {
-              const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-              if (rawData && rawData.length > 0 && 
-                  rawData[0].category && rawData[0].Current && 
-                  rawData[0].Baseline && rawData[0].Replant) {
-                window.rawOutflowData = rawData;
-                console.log("Loaded raw data from Excel");
-              }
+            const data = XLSX.utils.sheet_to_json(sheet);
+            console.log(`Sheet "${sheetName}" parsed successfully. Rows: ${data.length}`);
+            if (data.length === 0) {
+              console.warn(`Sheet "${sheetName}" parsed but resulted in 0 rows.`);
+            } else {
+              // Log first row keys to check headers
+              console.log(`Sheet "${sheetName}" first row keys:`, Object.keys(data[0]));
             }
-            
-            // For percentage data - check second sheet
-            if (workbook.SheetNames[1]) {
-              const pctData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[1]]);
-              if (pctData && pctData.length > 0 && 
-                  pctData[0].category && 
-                  (pctData[0].Urban !== undefined) && 
-                  (pctData[0].Replant !== undefined)) {
-                window.percentageChangeData = pctData;
-                console.log("Loaded percentage data from Excel");
-              }
+            return data;
+          } catch (e) {
+            console.error(`Error parsing sheet "${sheetName}":`, e);
+            return []; // Return empty array on parsing error
+          }
+        };
+        
+        // Load raw data from first sheet
+        const firstSheetName = workbook.SheetNames[0];
+        window.rawOutflowData = safeSheetToJson(firstSheetName);
+        
+        if (!window.rawOutflowData || window.rawOutflowData.length === 0) {
+          console.warn("Raw outflow data is empty or missing. Charts may not display correctly.");
+        } else {
+          console.log("Raw data loaded successfully:", window.rawOutflowData);
+        }
+        
+        // Load percentage data from second sheet if available
+        if (workbook.SheetNames.length > 1) {
+          const secondSheetName = workbook.SheetNames[1];
+          window.percentageChangeData = safeSheetToJson(secondSheetName);
+          console.log("Percentage data loaded from sheet:", window.percentageChangeData);
+        } else {
+          // Calculate percentage data if not available
+          if (window.rawOutflowData && window.rawOutflowData.length > 0) {
+            try {
+              window.percentageChangeData = window.rawOutflowData.map(item => {
+                // Add checks for numeric values and handle potential division by zero
+                const baseline = Number(item.Baseline) || 0;
+                const urban = Number(item.Urban) || 0;
+                const replant = Number(item.Replant) || 0;
+                const urbanPct = baseline !== 0 ? ((urban - baseline) / baseline) * 100 : 0;
+                const replantPct = baseline !== 0 ? ((replant - baseline) / baseline) * 100 : 0;
+                
+                return {
+                  category: item.category,
+                  Urban: urbanPct,
+                  Replant: replantPct
+                };
+              });
+              console.log("Percentage data calculated from raw data:", window.percentageChangeData);
+            } catch (e) {
+              console.error("Error calculating percentage data:", e);
+              window.percentageChangeData = [];
             }
-            
-            // Regenerate trend data
-            console.log("Regenerating trend data");
-            window.trendData = window.rawOutflowData.map(item => ({
-              name: item.category,
-              Current: 0,
-              Baseline: ((item.Baseline - item.Current) / item.Current) * 100,
-              Replant: ((item.Replant - item.Current) / item.Current) * 100,
-              Urban: ((item.Urban - item.Current) / item.Current) * 100,
-              rawCurrent: item.Current,
-              rawBaseline: item.Baseline,
-              rawReplant: item.Replant,
-              rawUrban: item.Urban,
-            }));
-          } catch (err) {
-            console.error("Error processing Excel data:", err);
+          } else {
+            console.warn("Cannot calculate percentage data because raw data is unavailable");
+            window.percentageChangeData = [];
           }
         }
         
+        // Calculate trend data
+        if (window.rawOutflowData && window.rawOutflowData.length > 0) {
+          try {
+            window.trendData = window.rawOutflowData.map(item => {
+              // Add checks for numeric values and handle potential division by zero
+              const current = Number(item.Current) || 0;
+              const baseline = Number(item.Baseline) || 0;
+              const replant = Number(item.Replant) || 0;
+              const urban = Number(item.Urban) || 0;
+              const baselineChange = current !== 0 ? ((baseline - current) / current) * 100 : 0;
+              const replantChange = current !== 0 ? ((replant - current) / current) * 100 : 0;
+              const urbanChange = current !== 0 ? ((urban - current) / current) * 100 : 0;
+              
+              return {
+                name: item.category,
+                Current: 0, // Current is always 0% (reference point)
+                Baseline: baselineChange,
+                Replant: replantChange,
+                Urban: urbanChange,
+                rawCurrent: current,
+                rawBaseline: baseline,
+                rawReplant: replant,
+                rawUrban: urban,
+              };
+            });
+            console.log("Trend data calculated successfully:", window.trendData);
+          } catch (e) {
+            console.error("Error calculating trend data:", e);
+            window.trendData = [];
+          }
+        } else {
+          console.warn("Cannot calculate trend data because raw data is unavailable");
+          window.trendData = [];
+        }
+        
+        // Load box plot data from sheets with expected names
+        window.boxPlotData = {};
+        const boxPlotSheetNames = ['2yr-low', '2yr-peak', '200yr-low', '200yr-peak'];
+        
+        for (const sheetName of boxPlotSheetNames) {
+          // Try to find exact match first
+          let matchingSheet = workbook.SheetNames.find(name => name.toLowerCase() === sheetName.toLowerCase());
+          
+          // If no exact match, look for partial match
+          if (!matchingSheet) {
+            matchingSheet = workbook.SheetNames.find(name => 
+              name.toLowerCase().includes(sheetName.toLowerCase()));
+          }
+          
+          if (matchingSheet) {
+            console.log(`Found matching sheet for "${sheetName}": "${matchingSheet}"`);
+            const sheetData = safeSheetToJson(matchingSheet);
+            
+            // Process data into correct format for boxplot
+            if (sheetData && sheetData.length > 0) {
+              try {
+                window.boxPlotData[sheetName] = {
+                  current: sheetData.map(row => Number(row.current || row.Current) || 0),
+                  baseline: sheetData.map(row => Number(row.baseline || row.Baseline) || 0),
+                  replant: sheetData.map(row => Number(row.replant || row.Replant) || 0),
+                  urban: sheetData.map(row => Number(row.urban || row.Urban) || 0)
+                };
+                console.log(`Boxplot data for ${sheetName} processed:`, window.boxPlotData[sheetName]);
+              } catch (e) {
+                console.error(`Error processing boxplot data for ${sheetName}:`, e);
+                window.boxPlotData[sheetName] = { current: [], baseline: [], replant: [], urban: [] };
+              }
+            } else {
+              console.warn(`No data found in sheet for ${sheetName}`);
+              window.boxPlotData[sheetName] = { current: [], baseline: [], replant: [], urban: [] };
+            }
+          } else {
+            console.warn(`No matching sheet found for "${sheetName}"`);
+            window.boxPlotData[sheetName] = { current: [], baseline: [], replant: [], urban: [] };
+          }
+        }
+        
+        console.log("Final loaded data structure:", {
+          rawOutflowData: window.rawOutflowData,
+          percentageChangeData: window.percentageChangeData,
+          boxPlotData: window.boxPlotData,
+          trendData: window.trendData
+        });
+        
+        console.log("Excel data loading and processing finished successfully.");
+        
       } catch (error) {
-        console.error("Could not load Excel file:", error);
+        console.error("Error loading Excel data:", error);
+        document.querySelectorAll('.chart-container').forEach(container => {
+          container.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;height:100%;color:red;">
+            <p>Error loading data: ${error.message}. Please check console for details.</p>
+          </div>`;
+        });
+        
+        // Ensure data variables are empty arrays if loading fails
+        window.rawOutflowData = [];
+        window.percentageChangeData = [];
+        window.boxPlotData = {};
+        window.trendData = [];
       }
       
-      // Initialize charts with whatever data we have
-      console.log("Initializing charts with available data");
-      window.initializeRawChart = initializeRawChart;
-      window.initializePercentageChart = initializePercentageChart;
-      window.initializeTrendChart = initializeTrendChart;
-      
-      initializeRawChart();
-      initializePercentageChart();
-      initializeTrendChart();
+      return window.rawOutflowData && window.rawOutflowData.length > 0;
     }
     
-    // Start by trying to load Excel data, but we already have static data as backup
-    tryLoadExcelData();
-
     // Initialize charts and tabs
     document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM fully loaded and parsed");
       const distributionTabContent = document.getElementById('distribution');
       const distributionReactRoot = document.getElementById('distributionReactRoot');
       
-      // Initialize tabs
-      const tabLinks = document.querySelectorAll('.tab-link');
-      tabLinks.forEach(tab => {
-        tab.addEventListener('click', function() {
-          const tabId = this.id.replace('tab-', '');
-          
-          // Hide all tabs and remove active class from links
-          document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-          document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
-          
-          // Show the selected tab and mark link as active
-          const activeContent = document.getElementById(tabId);
-          if (activeContent) activeContent.classList.add('active');
-          this.classList.add('active');
-          
-          // Mount/Unmount React component for Distribution tab
-          if (tabId === 'distribution') {
-            // Ensure Babel has processed the script before rendering
-             setTimeout(() => {
+      // Load data first, then initialize tabs and default chart
+      loadExcelData().then((dataLoaded) => {
+        console.log("Excel data loading completed, success:", dataLoaded);
+        
+        // Initialize tabs after data load attempt
+        const tabLinks = document.querySelectorAll('.tab-link');
+        tabLinks.forEach(tab => {
+          tab.addEventListener('click', function() {
+            const tabId = this.id.replace('tab-', '');
+            
+            // Hide all tabs and remove active class from links
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+            
+            // Show the selected tab and mark link as active
+            const activeContent = document.getElementById(tabId);
+            if (activeContent) activeContent.classList.add('active');
+            this.classList.add('active');
+            
+            // Mount/Unmount React component for Distribution tab
+            if (tabId === 'distribution') {
+              // Ensure Babel has processed the script before rendering
+              setTimeout(() => {
                 if (typeof DistributionAnalysisComponent !== 'undefined') {
-                    ReactDOM.render(React.createElement(DistributionAnalysisComponent), distributionReactRoot);
+                  console.log("Rendering DistributionAnalysisComponent");
+                  ReactDOM.render(React.createElement(DistributionAnalysisComponent), distributionReactRoot);
                 } else {
-                    console.error('DistributionAnalysisComponent not found. Babel might not have finished.');
+                  console.error('DistributionAnalysisComponent not found. Babel might not have finished.');
                 }
-            }, 0);
-          } else {
-            // Unmount React component if it exists and we are switching away
-            if (distributionReactRoot.hasChildNodes()) {
-              ReactDOM.unmountComponentAtNode(distributionReactRoot);
+              }, 0);
+            } else {
+              // Unmount React component if it exists and we are switching away
+              if (distributionReactRoot.hasChildNodes()) {
+                console.log("Unmounting DistributionAnalysisComponent");
+                ReactDOM.unmountComponentAtNode(distributionReactRoot);
+              }
             }
-          }
-          
-          // Initialize Chart.js charts if they haven't been already and the tab is active
-          if (tabId === 'raw' && !rawChartInstance) {
-            initializeRawChart();
-          } else if (tabId === 'percentage' && !percentageChartInstance) {
-            initializePercentageChart();
-          } else if (tabId === 'trends' && !trendChartInstance) {
-            initializeTrendChart();
-          }
+            
+            // Initialize Chart.js charts if they haven't been already, the tab is active, AND data is loaded
+            if (tabId === 'raw' && !rawChartInstance && window.rawOutflowData && window.rawOutflowData.length > 0) {
+              initializeRawChart();
+            } else if (tabId === 'percentage' && !percentageChartInstance && window.percentageChangeData && window.percentageChangeData.length > 0) {
+              initializePercentageChart();
+            } else if (tabId === 'trends' && !trendChartInstance && window.trendData && window.trendData.length > 0) {
+              initializeTrendChart();
+            }
+          });
         });
+        
+        // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
+        if (window.rawOutflowData && window.rawOutflowData.length > 0) {
+          initializeRawChart();
+        } else {
+          console.warn("Raw outflow data not available, cannot initialize default chart.");
+        }
+        
+      }).catch(error => {
+        console.error("Error during initial data load sequence:", error);
       });
       
-      // Initialize the default active tab's chart (Raw Outflow)
-      initializeRawChart();
-
     }); // End DOMContentLoaded
 
     // --- Chart.js Initialization Functions ---
     
     function initializeRawChart() {
         const rawCtx = document.getElementById('rawChart')?.getContext('2d');
-        if (!rawCtx) return; // Don't initialize if canvas not visible/found
+        if (!rawCtx) {
+            console.warn("Raw chart canvas not found.");
+            return; 
+        }
+        // Check if data is loaded and valid
+        if (!window.rawOutflowData || window.rawOutflowData.length === 0) {
+            console.warn("Raw outflow data is not available or empty. Cannot initialize chart.");
+            // Optionally display a message on the canvas
+            rawCtx.clearRect(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
+            rawCtx.textAlign = 'center';
+            rawCtx.fillText('Data not available', rawCtx.canvas.width / 2, rawCtx.canvas.height / 2);
+            return;
+        }
+        
+        console.log("Initializing Raw Chart with data:", window.rawOutflowData);
         if (rawChartInstance) rawChartInstance.destroy(); // Destroy previous instance if exists
-        rawChartInstance = new Chart(rawCtx, {
-            type: 'bar',
-            data: {
-            labels: rawOutflowData.map(d => d.category),
-            datasets: [
-                { label: 'Current Conditions', data: rawOutflowData.map(d => d.Current), backgroundColor: '#0056b3', borderRadius: 4 },
-                { label: '2050 Baseline (ViT)', data: rawOutflowData.map(d => d.Baseline), backgroundColor: '#fd7e14', borderRadius: 4 },
-                { label: 'Replanting Efforts', data: rawOutflowData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 },
-                { label: 'Urban Development', data: rawOutflowData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 }
-            ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Max Outflow (cms)' } } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(2)} cms`; } } } } }
-        });
+        
+        try {
+            rawChartInstance = new Chart(rawCtx, {
+                type: 'bar',
+                data: {
+                labels: window.rawOutflowData.map(d => d.category),
+                datasets: [
+                    { label: 'Current Conditions', data: window.rawOutflowData.map(d => d.Current), backgroundColor: '#0056b3', borderRadius: 4 },
+                    { label: '2050 Baseline (ViT)', data: window.rawOutflowData.map(d => d.Baseline), backgroundColor: '#fd7e14', borderRadius: 4 },
+                    { label: 'Replanting Efforts', data: window.rawOutflowData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 },
+                    { label: 'Urban Development', data: window.rawOutflowData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 }
+                ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Max Outflow (cms)' } } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(2)} cms`; } } } } }
+            });
+        } catch (error) {
+            console.error("Error initializing Raw Chart:", error);
+        }
     }
 
     function initializePercentageChart() {
         const percentageCtx = document.getElementById('percentageChart')?.getContext('2d');
-        if (!percentageCtx) return;
+         if (!percentageCtx) {
+            console.warn("Percentage chart canvas not found.");
+            return; 
+        }
+       if (!window.percentageChangeData || window.percentageChangeData.length === 0) {
+            console.warn("Percentage change data is not available or empty. Cannot initialize chart.");
+            percentageCtx.clearRect(0, 0, percentageCtx.canvas.width, percentageCtx.canvas.height);
+            percentageCtx.textAlign = 'center';
+            percentageCtx.fillText('Data not available', percentageCtx.canvas.width / 2, percentageCtx.canvas.height / 2);
+            return;
+        }
+
+        console.log("Initializing Percentage Chart with data:", window.percentageChangeData);
         if (percentageChartInstance) percentageChartInstance.destroy();
-        percentageChartInstance = new Chart(percentageCtx, {
-            type: 'bar',
-            data: {
-            labels: percentageChangeData.map(d => d.category),
-            datasets: [
-                { label: 'Urban vs 2050', data: percentageChangeData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 },
-                { label: 'Replant vs 2050', data: percentageChangeData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 }
-            ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Change from Baseline (%)' }, ticks: { callback: function(value) { return value.toFixed(1) + '%'; } }, min: -6, max: 2 } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(2)}%`; } } } } }
-        });
+
+        try {
+            percentageChartInstance = new Chart(percentageCtx, {
+                type: 'bar',
+                data: {
+                labels: window.percentageChangeData.map(d => d.category),
+                datasets: [
+                    { label: 'Urban vs 2050', data: window.percentageChangeData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 },
+                    { label: 'Replant vs 2050', data: window.percentageChangeData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 }
+                ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Change from Baseline (%)' }, ticks: { callback: function(value) { return value.toFixed(1) + '%'; } }, min: -6, max: 2 } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(2)}%`; } } } } }
+            });
+        } catch (error) {
+             console.error("Error initializing Percentage Chart:", error);
+        }
     }
 
     function initializeTrendChart() {
         const trendCtx = document.getElementById('trendChart')?.getContext('2d');
-        if (!trendCtx) return;
+        if (!trendCtx) {
+            console.warn("Trend chart canvas not found.");
+            return;
+        }
+        if (!window.trendData || window.trendData.length === 0) {
+            console.warn("Trend data is not available or empty. Cannot initialize chart.");
+             trendCtx.clearRect(0, 0, trendCtx.canvas.width, trendCtx.canvas.height);
+            trendCtx.textAlign = 'center';
+            trendCtx.fillText('Data not available', trendCtx.canvas.width / 2, trendCtx.canvas.height / 2);
+            return;
+        }
+
+        console.log("Initializing Trend Chart with data:", window.trendData);
         if (trendChartInstance) trendChartInstance.destroy();
-        trendChartInstance = new Chart(trendCtx, {
-            type: 'line',
-            data: {
-            labels: trendData.map(d => d.name),
-            datasets: [
-                { label: 'Current Conditions', data: trendData.map(d => d.Current), borderColor: '#0056b3', backgroundColor: '#0056b3', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
-                { label: '2050 Baseline (ViT)', data: trendData.map(d => d.Baseline), borderColor: '#fd7e14', backgroundColor: '#fd7e14', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
-                { label: 'Replanting Efforts', data: trendData.map(d => d.Replant), borderColor: '#17a2b8', backgroundColor: '#17a2b8', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
-                { label: 'Urban Development', data: trendData.map(d => d.Urban), borderColor: '#dc3545', backgroundColor: '#dc3545', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 }
-            ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Change from Current (%)' }, ticks: { callback: function(value) { return value + '%'; } }, min: 0, max: 70 } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(1)}%`; }, title: function(context) { return `Return Period: ${context[0].label}`; } } } } }
-        });
+
+        try {
+            trendChartInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                labels: window.trendData.map(d => d.name),
+                datasets: [
+                    { label: 'Current Conditions', data: window.trendData.map(d => d.Current), borderColor: '#0056b3', backgroundColor: '#0056b3', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                    { label: '2050 Baseline (ViT)', data: window.trendData.map(d => d.Baseline), borderColor: '#fd7e14', backgroundColor: '#fd7e14', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                    { label: 'Replanting Efforts', data: window.trendData.map(d => d.Replant), borderColor: '#17a2b8', backgroundColor: '#17a2b8', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                    { label: 'Urban Development', data: window.trendData.map(d => d.Urban), borderColor: '#dc3545', backgroundColor: '#dc3545', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 }
+                ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Change from Current (%)' }, ticks: { callback: function(value) { return value + '%'; } }, min: 0, max: 70 } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(1)}%`; }, title: function(context) { return `Return Period: ${context[0].label}`; } } } } }
+            });
+        } catch (error) {
+            console.error("Error initializing Trend Chart:", error);
+        }
     }
     
   </script>
@@ -524,18 +684,28 @@
         const lowKey = `${yearGroup}-low`;
         const peakKey = `${yearGroup}-peak`;
         
+        // Check if boxPlotData and the required keys exist
+        if (!window.boxPlotData || !window.boxPlotData[lowKey] || !window.boxPlotData[peakKey]) {
+            console.warn(`Box plot data for year group '${yearGroup}' not found.`);
+            // Return empty structure to prevent errors
+             return [
+                { group: "Low", data: [] },
+                { group: "Peak", data: [] }
+            ];
+        }
+        
         const lowStats = {
-            current: calculateStats(boxPlotData[lowKey]?.current),
-            baseline: calculateStats(boxPlotData[lowKey]?.baseline),
-            replant: calculateStats(boxPlotData[lowKey]?.replant),
-            urban: calculateStats(boxPlotData[lowKey]?.urban)
+            current: calculateStats(window.boxPlotData[lowKey].current || []),
+            baseline: calculateStats(window.boxPlotData[lowKey].baseline || []),
+            replant: calculateStats(window.boxPlotData[lowKey].replant || []),
+            urban: calculateStats(window.boxPlotData[lowKey].urban || [])
         };
         
         const peakStats = {
-            current: calculateStats(boxPlotData[peakKey]?.current),
-            baseline: calculateStats(boxPlotData[peakKey]?.baseline),
-            replant: calculateStats(boxPlotData[peakKey]?.replant),
-            urban: calculateStats(boxPlotData[peakKey]?.urban)
+            current: calculateStats(window.boxPlotData[peakKey].current || []),
+            baseline: calculateStats(window.boxPlotData[peakKey].baseline || []),
+            replant: calculateStats(window.boxPlotData[peakKey].replant || []),
+            urban: calculateStats(window.boxPlotData[peakKey].urban || [])
         };
         
         const mapData = (stats, type) => ([
@@ -555,14 +725,37 @@
     function DistributionAnalysisComponent() {
         const [selectedYearGroup, setSelectedYearGroup] = useState('2yr');
         const [chartHover, setChartHover] = useState(null); // Optional hover state
+        const [isDataReady, setIsDataReady] = useState(false);
+        
+        // Check for data on mount and when year group changes
+        React.useEffect(() => {
+            const checkData = () => {
+                const lowKey = `${selectedYearGroup}-low`;
+                const peakKey = `${selectedYearGroup}-peak`;
+                const dataAvailable = window.boxPlotData && 
+                                    window.boxPlotData[lowKey] && 
+                                    window.boxPlotData[peakKey] &&
+                                    window.boxPlotData[lowKey].current && // Check deeper
+                                    window.boxPlotData[lowKey].current.length > 0;
+                setIsDataReady(!!dataAvailable);
+                if (!dataAvailable) {
+                    console.warn(`Distribution data for ${selectedYearGroup} is not ready or incomplete.`);
+                }
+            };
+            checkData();
+        }, [selectedYearGroup]); // Re-check when selectedYearGroup changes
 
-        // Regenerate data when selectedYearGroup changes
-        const areaDistributionData = generateAreaDistributionData(selectedYearGroup);
+        // Regenerate data only if ready
+        const areaDistributionData = isDataReady 
+            ? generateAreaDistributionData(selectedYearGroup) 
+            : [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
         const yAxisRange = getDistributionYAxisRange(selectedYearGroup);
 
         const DistributionTooltip = ({ active, payload, label }) => {
             if (active && payload && payload.length) {
                 const data = payload[0].payload; // Access the data point object
+                // Check if data properties exist before accessing them
+                if (!data || data.min === undefined) return null;
                 return (
                     <div className="bg-white p-3 rounded shadow-lg border border-gray-200 text-xs">
                         <div className="font-semibold text-gray-800 mb-1">{data.name} - {data.type}</div>
@@ -579,6 +772,43 @@
             }
             return null;
         };
+        
+        // Display loading or error message if data isn't ready
+        if (!isDataReady) {
+             return (
+                <div>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-1">Distribution Analysis</h2>
+                    <p className="text-gray-600 mb-4 text-sm italic">Loading data or data unavailable for the selected period...</p>
+                     {/* Still show selectors */}
+                     <div className="flex flex-wrap mb-6">
+                        <button 
+                            onClick={() => setSelectedYearGroup('2yr')} 
+                            className={`px-4 py-2 mr-2 mb-2 text-sm rounded-md transition-colors ${
+                            selectedYearGroup === '2yr' 
+                                ? 'bg-blue-700 text-white' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            2-Year Return Period
+                        </button>
+                        <button 
+                            onClick={() => setSelectedYearGroup('200yr')} 
+                            className={`px-4 py-2 mb-2 text-sm rounded-md transition-colors ${
+                            selectedYearGroup === '200yr' 
+                                ? 'bg-blue-700 text-white' 
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            200-Year Return Period
+                        </button>
+                    </div>
+                    <div className="p-4 bg-red-50 text-red-700 rounded-lg my-4">
+                        Unable to display charts. Data for {selectedYearGroup === '2yr' ? '2-year' : '200-year'} return period is not available.
+                        Check that the Excel file contains the required sheets and data.
+                    </div>
+                </div>
+            );
+        }
 
         return (
             <div>
@@ -663,7 +893,7 @@
                                     {/* Area for Q1-Q3 Range */}
                                     <Area 
                                         type="monotone" 
-                                        dataKey={['q1', 'q3']} // Define range using q1 and q3
+                                        dataKey={d => [d.q1, d.q3]} // Use accessor function
                                         stroke="none" 
                                         fill="rgba(0,86,179,0.2)" // Blue fill for low events
                                         fillOpacity={0.6}
@@ -718,7 +948,7 @@
                                     {/* Area for Q1-Q3 Range */}
                                     <Area 
                                         type="monotone" 
-                                        dataKey={['q1', 'q3']} // Define range using q1 and q3
+                                        dataKey={d => [d.q1, d.q3]} // Use accessor function
                                         stroke="none" 
                                         fill="rgba(220,53,69,0.2)" // Red fill for peak events
                                         fillOpacity={0.6}

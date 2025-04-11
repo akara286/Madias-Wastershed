@@ -788,7 +788,7 @@ function ModernWaterDashboard() {
       <footer className="bg-gray-800 text-white py-6 px-4">
         <div className="max-w-6xl mx-auto">
           <p className="text-center text-gray-400 text-sm">
-            Max Outflow Uncertainty Dashboard | Created with React & Recharts | Data from uncertainty.csv
+            Max Outflow Uncertainty Dashboard | Created with React & Recharts | Data from uncertainty.xlsx
           </p>
         </div>
       </footer>
