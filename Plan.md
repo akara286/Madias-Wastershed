@@ -1,89 +1,15 @@
 <Plan>
-The user has provided the correct sheet names from their Excel file. The previous warnings ("No matching sheet found") confirm that the code was looking for different names.
+The logs confirm that data loading is now successful, and the correct sheet names are being used. However, there are two remaining issues:
 
-1.  **Update Sheet Names in `loadExcelData`:** Modify the `loadExcelData` function in `index.html` to use the exact sheet names provided (`2yr max outflow - low`, `2yr max outflow - peak`, `200yr max outflow - low`, `200yr max outflow - peak`) when reading data for the `boxPlotData` object.
-2.  **Update Keys in React Component:** Modify the `generateAreaDistributionData` function (within the `<script type="text/babel">` block) to use these same correct names as keys when accessing `window.boxPlotData`.
-3.  **Update Data Check in React Component:** Modify the `useEffect` hook and the initial data check within the React component to look for the correct keys (`2yr max outflow - low`, etc.) in `window.boxPlotData` to determine if the data is ready.
+1.  **Column Name Mismatch for Distribution Data:** The logs show that the column names within the "low" and "peak" sheets are inconsistent (e.g., `"2yr current cms"`, `"current"`, `"200yr"`, `"cc Base (ViT)"`, `"cc base (ViT)"`). The `generateAreaDistributionData` function currently assumes the data passed to `calculateStats` is already an array of numbers for `current`, `baseline`, `replant`, and `urban`. This is incorrect. We need to modify `generateAreaDistributionData` to iterate through the rows parsed from the Excel sheet and extract the correct numerical values based on the actual column names found in each sheet, creating separate arrays of numbers for each scenario *before* calling `calculateStats`.
+2.  **Initial Canvas Not Found:** The `Raw chart canvas not found.` warning persists for the *initial* load (before tab clicks). This suggests that even within `DOMContentLoaded` and after `loadExcelData` finishes, the default "Raw Outflow" tab's canvas might not be rendered immediately. We will add a small `setTimeout` delay specifically for the *initial* call to `initializeRawChart` after data loading completes to give the browser a moment to render the default tab content.
+
 </Plan>
 
 <file path="/Users/alikara/Desktop/508 website/index.html" action="modify">
   <change>
-    <description>Use correct sheet names when loading box plot data in loadExcelData.</description>
+    <description>Refactor generateAreaDistributionData to correctly extract numerical data using actual column names from sheets before calculating stats.</description>
     <search>
-===
-            window.rawOutflowData = safeSheetToJson("RawData");
-            window.percentageChangeData = safeSheetToJson("PercentageData");
-            window.boxPlotData = {
-                "2yr-low": safeSheetToJson("2yr-low"),
-                "2yr-peak": safeSheetToJson("2yr-peak"),
-                "200yr-low": safeSheetToJson("200yr-low"),
-                "200yr-peak": safeSheetToJson("200yr-peak")
-            };
-
-            // Process trendData only if rawOutflowData is valid
-===
-    </search>
-    <content>
-===
-            window.rawOutflowData = safeSheetToJson("RawData");
-            window.percentageChangeData = safeSheetToJson("PercentageData");
-            
-            // Use the correct sheet names provided by the user
-            const boxPlotSheetNames = {
-                low2yr: "2yr max outflow - low",
-                peak2yr: "2yr max outflow - peak",
-                low200yr: "200yr max outflow - low",
-                peak200yr: "200yr max outflow - peak"
-            };
-            window.boxPlotData = {
-                [boxPlotSheetNames.low2yr]: safeSheetToJson(boxPlotSheetNames.low2yr),
-                [boxPlotSheetNames.peak2yr]: safeSheetToJson(boxPlotSheetNames.peak2yr),
-                [boxPlotSheetNames.low200yr]: safeSheetToJson(boxPlotSheetNames.low200yr),
-                [boxPlotSheetNames.peak200yr]: safeSheetToJson(boxPlotSheetNames.peak200yr)
-            };
-            console.log("Box plot data loaded with keys:", Object.keys(window.boxPlotData));
-
-
-            // Process trendData only if rawOutflowData is valid
-===
-    </content>
-  </change>
-  <change>
-    <description>Use correct keys when accessing box plot data in generateAreaDistributionData.</description>
-    <search>
-===
-    };
-
-    const generateAreaDistributionData = (yearGroup) => {
-        const lowKey = `${yearGroup}-low`;
-        const peakKey = `${yearGroup}-peak`;
-        
-        // Check if boxPlotData and the required keys exist
-        if (!window.boxPlotData || !window.boxPlotData[lowKey] || !window.boxPlotData[peakKey]) {
-            console.warn(`Box plot data for year group '${yearGroup}' not found.`);
-            // Return empty structure to prevent errors
-             return [
-                { group: "Low", data: [] },
-                { group: "Peak", data: [] }
-            ];
-        }
-
-        const lowStats = {
-            current: calculateStats(boxPlotData[lowKey]?.current || []),
-            baseline: calculateStats(boxPlotData[lowKey]?.baseline || []),
-            replant: calculateStats(boxPlotData[lowKey]?.replant || []),
-            urban: calculateStats(boxPlotData[lowKey]?.urban || [])
-        };
-        
-        const peakStats = {
-            current: calculateStats(boxPlotData[peakKey]?.current || []),
-            baseline: calculateStats(boxPlotData[peakKey]?.baseline || []),
-            replant: calculateStats(boxPlotData[peakKey]?.replant || []),
-            urban: calculateStats(boxPlotData[peakKey]?.urban || [])
-        };
-===
-    </search>
-    <content>
 ===
     };
 
@@ -126,148 +52,164 @@ The user has provided the correct sheet names from their Excel file. The previou
             replant: calculateStats(peakData?.replant || []),
             urban: calculateStats(peakData?.urban || [])
         };
-===
-    </content>
-  </change>
-  <change>
-    <description>Update React component useEffect and initial check to use correct sheet names/keys.</description>
-    <search>
-===
-        // Check for data on mount and when year group changes
-        useEffect(() => {
-            const checkData = () => {
-                const lowKey = `${selectedYearGroup}-low`;
-                const peakKey = `${selectedYearGroup}-peak`;
-                const dataAvailable = window.boxPlotData && 
-                                      window.boxPlotData[lowKey] && 
-                                      window.boxPlotData[peakKey] &&
-                                      window.boxPlotData[lowKey].current && // Check deeper
-                                      window.boxPlotData[peakKey].current; 
-                setIsDataReady(!!dataAvailable);
-                if (!dataAvailable) {
-                     console.warn(`Distribution data for ${selectedYearGroup} is not ready or incomplete.`);
-                }
-            };
-            checkData();
-        }, [selectedYearGroup]); // Re-check when selectedYearGroup changes
-
-        // Regenerate data only if ready
-        const areaDistributionData = isDataReady ? generateAreaDistributionData(selectedYearGroup) : [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
-        const yAxisRange = getDistributionYAxisRange(selectedYearGroup);
-
-        const DistributionTooltip = ({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-                const data = payload[0].payload; // Access the data point object
-                // Check if data properties exist before accessing them
-                if (!data || data.min === undefined) return null; 
-                return (
-                    <div className="bg-white p-3 rounded shadow-lg border border-gray-200 text-xs">
-                        <div className="font-semibold text-gray-800 mb-1">{data.name} - {data.type}</div>
-                        <div className="space-y-1">
-                            <div>Min: {data.min?.toFixed(4)} cms</div>
-                            <div>Q1: {data.q1?.toFixed(4)} cms</div>
-                            <div className="font-medium">Median: {data.median?.toFixed(4)} cms</div>
-                            <div>Q3: {data.q3?.toFixed(4)} cms</div>
-                            <div>Max: {data.max?.toFixed(4)} cms</div>
-                            <div className="font-medium">Average: {data.avg?.toFixed(4)} cms</div>
-                        </div>
-                    </div>
-                );
-            }
-            return null;
-        };
         
-        // Display loading or error message if data isn't ready
-        if (!isDataReady) {
-             // Check which specific sheets might be missing based on the selected group
-             const missingSheets = [];
-             const lowKey = `${selectedYearGroup}-low`;
-             const peakKey = `${selectedYearGroup}-peak`;
-             if (!window.boxPlotData || !window.boxPlotData[lowKey]) missingSheets.push(lowKey);
-             if (!window.boxPlotData || !window.boxPlotData[peakKey]) missingSheets.push(peakKey);
+        const mapData = (stats, type) => ([
+            { name: 'Current', ...stats.current, type },
+            { name: '2050 Baseline', ...stats.baseline, type },
+            { name: 'Replant', ...stats.replant, type },
+            { name: 'Urban', ...stats.urban, type }
+        ]);
 
-             let message = `Loading data or data unavailable for the ${selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} period...`;
-             if (missingSheets.length > 0) {
-                 message = `Data unavailable. Please ensure the 'uncertainty.xlsx' file contains the following sheets: ${missingSheets.join(', ')}.`;
-             }
-
-             return (
-                <div>
+        return [
+            { group: "Low", data: mapData(lowStats, "Low") },
+            { group: "Peak", data: mapData(peakStats, "Peak") }
+        ];
+    };
 ===
     </search>
     <content>
 ===
-        // Check for data on mount and when year group changes
-        useEffect(() => {
-            const checkData = () => {
-                const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
-                const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
-                
-                const dataAvailable = window.boxPlotData && 
-                                      window.boxPlotData[lowKey] && 
-                                      window.boxPlotData[peakKey] &&
-                                      // Check deeper structure - ensure data was parsed correctly
-                                      Array.isArray(window.boxPlotData[lowKey]) && window.boxPlotData[lowKey].length > 0 &&
-                                      Array.isArray(window.boxPlotData[peakKey]) && window.boxPlotData[peakKey].length > 0; 
-                                      // Note: We calculate stats later, so just check if arrays exist and aren't empty
-                                      
-                setIsDataReady(!!dataAvailable);
-                if (!dataAvailable) {
-                     console.warn(`Distribution data for keys '${lowKey}' or '${peakKey}' is not ready or incomplete.`);
-                } else {
-                     console.log(`Distribution data for keys '${lowKey}' and '${peakKey}' appears ready.`);
-                }
-            };
-            checkData();
-        }, [selectedYearGroup]); // Re-check when selectedYearGroup changes
+    };
 
-        // Regenerate data only if ready
-        const areaDistributionData = isDataReady ? generateAreaDistributionData(selectedYearGroup) : [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
-        const yAxisRange = getDistributionYAxisRange(selectedYearGroup);
+    const generateAreaDistributionData = (yearGroup) => {
+        // Map yearGroup to the correct sheet names/keys
+        const lowKey = yearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
+        const peakKey = yearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
 
-        const DistributionTooltip = ({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-                const data = payload[0].payload; // Access the data point object
-                // Check if data properties exist before accessing them
-                if (!data || data.min === undefined) return null; 
-                return (
-                    <div className="bg-white p-3 rounded shadow-lg border border-gray-200 text-xs">
-                        <div className="font-semibold text-gray-800 mb-1">{data.name} - {data.type}</div>
-                        <div className="space-y-1">
-                            <div>Min: {data.min?.toFixed(4)} cms</div>
-                            <div>Q1: {data.q1?.toFixed(4)} cms</div>
-                            <div className="font-medium">Median: {data.median?.toFixed(4)} cms</div>
-                            <div>Q3: {data.q3?.toFixed(4)} cms</div>
-                            <div>Max: {data.max?.toFixed(4)} cms</div>
-                            <div className="font-medium">Average: {data.avg?.toFixed(4)} cms</div>
-                        </div>
-                    </div>
-                );
+        // Check if boxPlotData and the required keys exist and contain data
+        if (!window.boxPlotData || 
+            !window.boxPlotData[lowKey] || !Array.isArray(window.boxPlotData[lowKey]) || window.boxPlotData[lowKey].length === 0 ||
+            !window.boxPlotData[peakKey] || !Array.isArray(window.boxPlotData[peakKey]) || window.boxPlotData[peakKey].length === 0) {
+            console.warn(`Box plot data for keys '${lowKey}' or '${peakKey}' not found, is not an array, or is empty.`);
+            return [{ group: "Low", data: [] }, { group: "Peak", data: [] }];
+        }
+
+        // Helper to extract numeric data for a scenario based on potential column names
+        const extractScenarioData = (sheetData, scenario) => {
+            const values = [];
+            let currentColumn, baselineColumn, replantColumn, urbanColumn;
+
+            // Determine column names based on the first row (assuming consistent columns)
+            const firstRow = sheetData[0];
+            if (!firstRow) return []; // Empty sheet data
+
+            // Identify potential column names (case-insensitive checks might be needed if headers vary wildly)
+            currentColumn = Object.keys(firstRow).find(k => k.toLowerCase().includes('current') || k.toLowerCase().includes('2yr') || k.toLowerCase().includes('200yr'));
+            baselineColumn = Object.keys(firstRow).find(k => k.toLowerCase().includes('base') || k.toLowerCase().includes('baseline'));
+            replantColumn = Object.keys(firstRow).find(k => k.toLowerCase().includes('replant'));
+            urbanColumn = Object.keys(firstRow).find(k => k.toLowerCase().includes('urban'));
+
+            let targetColumn;
+            switch (scenario) {
+                case 'current': targetColumn = currentColumn; break;
+                case 'baseline': targetColumn = baselineColumn; break;
+                case 'replant': targetColumn = replantColumn; break;
+                case 'urban': targetColumn = urbanColumn; break;
+                default: return [];
             }
-            return null;
+
+            if (!targetColumn) {
+                console.warn(`Could not find column for scenario '${scenario}' in sheet data starting with keys:`, Object.keys(firstRow));
+                return [];
+            }
+
+            // Extract numbers
+            for (const row of sheetData) {
+                const value = parseFloat(row[targetColumn]);
+                if (!isNaN(value)) {
+                    values.push(value);
+                } else {
+                     // console.warn(`Non-numeric value found for column '${targetColumn}' in row:`, row);
+                }
+            }
+            // console.log(`Extracted ${values.length} values for scenario '${scenario}' using column '${targetColumn}'`);
+            return values;
+        };
+
+        // Extract data for each scenario from the LOW sheet data
+        const lowCurrentData = extractScenarioData(window.boxPlotData[lowKey], 'current');
+        const lowBaselineData = extractScenarioData(window.boxPlotData[lowKey], 'baseline');
+        const lowReplantData = extractScenarioData(window.boxPlotData[lowKey], 'replant');
+        const lowUrbanData = extractScenarioData(window.boxPlotData[lowKey], 'urban');
+
+        // Extract data for each scenario from the PEAK sheet data
+        const peakCurrentData = extractScenarioData(window.boxPlotData[peakKey], 'current');
+        const peakBaselineData = extractScenarioData(window.boxPlotData[peakKey], 'baseline');
+        const peakReplantData = extractScenarioData(window.boxPlotData[peakKey], 'replant');
+        const peakUrbanData = extractScenarioData(window.boxPlotData[peakKey], 'urban');
+
+        // Calculate stats on the extracted numerical arrays
+        const lowStats = {
+            current: calculateStats(lowCurrentData),
+            baseline: calculateStats(lowBaselineData),
+            replant: calculateStats(lowReplantData),
+            urban: calculateStats(lowUrbanData)
         };
         
-        // Display loading or error message if data isn't ready
-        if (!isDataReady) {
-             // Check which specific sheets/keys might be missing based on the selected group
-             const missingKeys = [];
-             const lowKey = selectedYearGroup === '2yr' ? "2yr max outflow - low" : "200yr max outflow - low";
-             const peakKey = selectedYearGroup === '2yr' ? "2yr max outflow - peak" : "200yr max outflow - peak";
-             
-             if (!window.boxPlotData || !window.boxPlotData[lowKey] || !Array.isArray(window.boxPlotData[lowKey]) || window.boxPlotData[lowKey].length === 0) {
-                 missingKeys.push(`'${lowKey}'`);
-             }
-             if (!window.boxPlotData || !window.boxPlotData[peakKey] || !Array.isArray(window.boxPlotData[peakKey]) || window.boxPlotData[peakKey].length === 0) {
-                 missingKeys.push(`'${peakKey}'`);
-             }
+        const peakStats = {
+            current: calculateStats(peakCurrentData),
+            baseline: calculateStats(peakBaselineData),
+            replant: calculateStats(peakReplantData),
+            urban: calculateStats(peakUrbanData)
+        };
+        
+        // Map stats to the format needed by the chart
+        const mapData = (stats, type) => ([
+            { name: 'Current', ...stats.current, type },
+            { name: '2050 Baseline', ...stats.baseline, type },
+            { name: 'Replant', ...stats.replant, type },
+            { name: 'Urban', ...stats.urban, type }
+        ]);
 
-             let message = `Loading data or data unavailable for the ${selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} period...`;
-             if (missingKeys.length > 0) {
-                 message = `Data unavailable. Please ensure the 'uncertainty.xlsx' file contains valid data in the sheet(s): ${missingKeys.join(' and ')}. Check console for details.`;
-             }
+        return [
+            { group: "Low", data: mapData(lowStats, "Low") },
+            { group: "Peak", data: mapData(peakStats, "Peak") }
+        ];
+    };
+===
+    </content>
+  </change>
+  <change>
+    <description>Add setTimeout delay for the initial raw chart initialization after data load.</description>
+    <search>
+===
+          
+          // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
+          if (window.rawOutflowData && window.rawOutflowData.length > 0) {
+             initializeRawChart();
+          } else {
+             console.warn("Raw outflow data not available, cannot initialize default chart.");
+          }
 
-             return (
-                <div>
+      }).catch(error => {
+          console.error("Error during initial data load sequence:", error);
+      });
+===
+    </search>
+    <content>
+===
+          
+          // Initialize the default active tab's chart (Raw Outflow) IF data is loaded
+          // Add a small delay to ensure the canvas is rendered
+          setTimeout(() => {
+              if (window.rawOutflowData && window.rawOutflowData.length > 0) {
+                 console.log("Attempting initial Raw Chart initialization.");
+                 initializeRawChart();
+              } else {
+                 console.warn("Raw outflow data not available, cannot initialize default chart.");
+                 // Optionally try to display message on canvas if it exists
+                 const rawCtx = document.getElementById('rawChart')?.getContext('2d');
+                 if (rawCtx) {
+                    rawCtx.clearRect(0, 0, rawCtx.canvas.width, rawCtx.canvas.height);
+                    rawCtx.textAlign = 'center';
+                    rawCtx.fillText('Data not available', rawCtx.canvas.width / 2, rawCtx.canvas.height / 2);
+                 }
+              }
+          }, 100); // 100ms delay - adjust if needed
+
+      }).catch(error => {
+          console.error("Error during initial data load sequence:", error);
+      });
 ===
     </content>
   </change>
