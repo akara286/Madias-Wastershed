@@ -5,11 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Dashboard</title>
   
-  <!-- Chart.js and required plugins -->
+  <!-- Chart.js (for Raw, Percentage, Trend tabs) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
   
+  <!-- React, ReactDOM, Babel (for Distribution tab) -->
+  <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Recharts (for Distribution tab) -->
+  <script src="https://unpkg.com/recharts@2.1.16/umd/Recharts.min.js"></script>
+  
+  <!-- Tailwind CSS (via CDN for styling consistency with React component) -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  
   <style>
+    /* Keep existing styles for overall layout and non-React tabs */
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -44,12 +56,15 @@
       border: none;
       border-radius: 5px 5px 0 0;
       margin-right: 0.5rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: -1px; /* Overlap border */
       transition: all 0.3s;
+      border: 1px solid transparent;
+      border-bottom: none;
     }
     
     .tab-link.active {
       background-color: white;
+      border-color: #dee2e6 #dee2e6 white;
       border-bottom: 3px solid #1976d2;
       color: #1976d2;
       font-weight: bold;
@@ -63,7 +78,9 @@
       display: none;
       background-color: white;
       padding: 2rem;
-      border-radius: 5px;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      border-radius: 0 5px 5px 5px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       margin-bottom: 2rem;
     }
@@ -73,7 +90,9 @@
     }
     
     .chart-container {
+      position: relative; /* Needed for Chart.js responsiveness */
       height: 400px;
+      width: 100%;
       margin-bottom: 2rem;
     }
     
@@ -129,72 +148,18 @@
     h1, h2, h3 {
       margin-top: 0;
     }
-    
-    .period-toggle {
-      margin-bottom: 1.5rem;
-    }
-    
-    .period-button {
-      padding: 0.5rem 1rem;
-      background-color: #f1f1f1;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-right: 0.5rem;
-      transition: all 0.3s;
-    }
-    
-    .period-button.active {
-      background-color: #1976d2;
-      color: white;
-    }
-    
-    ul {
-      padding-left: 1.5rem;
-    }
-    
-    li {
-      margin-bottom: 0.5rem;
-    }
-    
-    .highlight {
-      font-weight: 600;
-    }
-    
+        
     .subtitle {
       font-style: italic;
       color: #6c757d;
       margin-bottom: 1.5rem;
     }
-    
-    .box-plot-line {
-      position: absolute;
-      border-left: 2px solid rgba(0,0,0,0.2);
-      height: 10px;
+        
+    /* Styles needed by React component if not covered by Tailwind */
+    .recharts-tooltip-wrapper {
+      z-index: 1000 !important; /* Ensure tooltip is on top */
     }
     
-    /* Distribution indicator */
-    .dist-indicator {
-      margin-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    
-    .dist-item {
-      display: flex;
-      align-items: center;
-      margin-right: 20px;
-      margin-bottom: 10px;
-    }
-    
-    .dist-color {
-      width: 20px;
-      height: 20px;
-      margin-right: 8px;
-      border-radius: 3px;
-    }
   </style>
 </head>
 <body>
@@ -216,7 +181,7 @@
       <button class="tab-link" id="tab-trends">Trend Analysis</button>
     </div>
     
-    <!-- Raw Outflow Tab -->
+    <!-- Raw Outflow Tab (Chart.js) -->
     <div id="raw" class="tab-content active">
       <h2>Raw Max Outflow Comparison</h2>
       <p class="subtitle">Summary values representing multiple return periods</p>
@@ -233,101 +198,13 @@
       </div>
     </div>
     
-    <!-- Distribution Analysis Tab -->
+    <!-- Distribution Analysis Tab (React/Recharts) -->
     <div id="distribution" class="tab-content">
-      <h2>Distribution Analysis (<span id="yearGroupTitle">2-Year</span> Return Period)</h2>
-      <p class="subtitle">Combined low and peak scenario distribution</p>
-      
-      <div class="period-toggle">
-        <button class="period-button active" id="period-2yr">2-Year Return Period</button>
-        <button class="period-button" id="period-200yr">200-Year Return Period</button>
-      </div>
-      
-      <div class="info-box">
-        <p>
-          This chart visualizes the statistical distribution of max outflow values for both low and peak events in
-          the <span id="yearGroupDesc">2-year</span> return period. Each bar shows the median value with min/max range.
-        </p>
-      </div>
-      
-      <div class="dist-indicator">
-        <div class="dist-item">
-          <div class="dist-color" style="background-color: #0056b3;"></div>
-          <div>Current</div>
-        </div>
-        <div class="dist-item">
-          <div class="dist-color" style="background-color: #fd7e14;"></div>
-          <div>2050 Baseline</div>
-        </div>
-        <div class="dist-item">
-          <div class="dist-color" style="background-color: #17a2b8;"></div>
-          <div>Replant</div>
-        </div>
-        <div class="dist-item">
-          <div class="dist-color" style="background-color: #dc3545;"></div>
-          <div>Urban</div>
-        </div>
-      </div>
-      
-      <div class="grid">
-        <div>
-          <h3>Low Events</h3>
-          <div class="chart-container">
-            <canvas id="lowChart"></canvas>
-          </div>
-        </div>
-        <div>
-          <h3>Peak Events</h3>
-          <div class="chart-container">
-            <canvas id="peakChart"></canvas>
-          </div>
-        </div>
-      </div>
-      
-      <div class="grid" style="margin-top: 2rem;">
-        <div class="card">
-          <h3>Key Statistics</h3>
-          <div style="overflow-x: auto;">
-            <table id="statsTable">
-              <thead>
-                <tr>
-                  <th>Scenario</th>
-                  <th>Type</th>
-                  <th>Min</th>
-                  <th>Max</th>
-                  <th>Average</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Filled by JavaScript -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        <div class="card">
-          <h3>Key Insights</h3>
-          <div id="insights2yr">
-            <ul>
-              <li>The <span class="highlight">Urban</span> scenario shows the highest peak flow values (2.43 cms).</li>
-              <li>The <span class="highlight">Current</span> conditions have the lowest outflow values across both low and peak events.</li>
-              <li>The <span class="highlight">Replant</span> strategy is more effective for peak events, showing ~4.2% reduction from baseline.</li>
-              <li>The relative difference between low and peak events stays consistent across all scenarios.</li>
-            </ul>
-          </div>
-          <div id="insights200yr" style="display: none;">
-            <ul>
-              <li>All future scenarios show dramatically higher values (~60%+) compared to current conditions.</li>
-              <li>The <span class="highlight">Replant</span> scenario offers minimal reduction for extreme 200-year events.</li>
-              <li>The <span class="highlight">Urban</span> development impact becomes less significant at 200-year peak events.</li>
-              <li>The gap between low and peak values is much wider than in 2-year return periods.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      <!-- React component will render here -->
+      <div id="distributionReactRoot"></div> 
     </div>
     
-    <!-- Percentage Change Tab -->
+    <!-- Percentage Change Tab (Chart.js) -->
     <div id="percentage" class="tab-content">
       <h2>Percentage Change from 2050 Baseline</h2>
       <p class="subtitle">Calculated from summary values representing multiple return periods</p>
@@ -344,7 +221,7 @@
       </div>
     </div>
     
-    <!-- Trend Analysis Tab -->
+    <!-- Trend Analysis Tab (Chart.js) -->
     <div id="trends" class="tab-content">
       <h2>Trend Analysis: Scenario Changes Across Events</h2>
       <p class="subtitle">Showing percentage change from current conditions</p>
@@ -365,9 +242,9 @@
         <div class="card">
           <h3>Key Observations</h3>
           <ul>
-            <li>The impact of <span class="highlight" style="color: #fd7e14;">climate change (2050 baseline)</span> increases with rainfall severity - up to <span class="highlight">45%</span> higher outflow for 200-year events.</li>
-            <li><span class="highlight" style="color: #17a2b8;">Replanting efforts</span> are most effective at reducing outflow during smaller events (2-year return periods).</li>
-            <li><span class="highlight" style="color: #dc3545;">Urban development</span> shows minimal additional impact at extreme events (200-year peak).</li>
+            <li>The impact of <span class="font-semibold" style="color: #fd7e14;">climate change (2050 baseline)</span> increases with rainfall severity - up to <span class="font-semibold">45%</span> higher outflow for 200-year events.</li>
+            <li><span class="font-semibold" style="color: #17a2b8;">Replanting efforts</span> are most effective at reducing outflow during smaller events (2-year return periods).</li>
+            <li><span class="font-semibold" style="color: #dc3545;">Urban development</span> shows minimal additional impact at extreme events (200-year peak).</li>
             <li>All future scenarios converge at extreme events, suggesting limited mitigation options for the most severe rainfall scenarios.</li>
           </ul>
         </div>
@@ -375,10 +252,10 @@
         <div class="card">
           <h3>Implications</h3>
           <ul>
-            <li>Planning for <span class="highlight">greater outflow capacity</span> is critical across all future scenarios.</li>
+            <li>Planning for <span class="font-semibold">greater outflow capacity</span> is critical across all future scenarios.</li>
             <li>The most dramatic increases in outflow occur between current conditions and the 2050 baseline.</li>
             <li>Mitigation strategies have diminishing returns as rainfall severity increases.</li>
-            <li>Under 200-year peak events, all climate scenarios produce over <span class="highlight">45% more outflow</span> compared to current conditions.</li>
+            <li>Under 200-year peak events, all climate scenarios produce over <span class="font-semibold">45% more outflow</span> compared to current conditions.</li>
           </ul>
         </div>
       </div>
@@ -387,12 +264,12 @@
   
   <footer class="footer">
     <div class="container">
-      <p>Max Outflow Uncertainty Dashboard | Created with Chart.js | Data from uncertainty.csv</p>
+      <p>Max Outflow Uncertainty Dashboard | Data from uncertainty.csv</p>
     </div>
   </footer>
 
   <script>
-    // Data
+    // Data (used by Chart.js tabs and potentially React component)
     const rawOutflowData = [
       { category: '2yr - Low', Current: 1.216666, Baseline: 1.326637, Replant: 1.261602, Urban: 1.332193 },
       { category: '2yr - Peak', Current: 2.198027, Baseline: 2.427346, Replant: 2.323949, Urban: 2.43629 },
@@ -407,7 +284,7 @@
       { category: '200yr - Peak', Urban: 0.0925, Replant: -1.1013 }
     ];
     
-    // Create trend data
+    // Create trend data (used by Chart.js Trend tab)
     const trendData = rawOutflowData.map(item => {
       return {
         name: item.category,
@@ -418,614 +295,435 @@
       };
     });
     
-    // Boxplot data
+    // Boxplot data (used by React Distribution tab)
     const boxPlotData = {
-      // 2-year low data
-      '2yr-low': {
-        current: [1.20, 1.21, 1.22, 1.23, 1.22, 1.21, 1.22, 1.21, 1.22, 1.20],
-        baseline: [1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.33, 1.32],
-        replant: [1.25, 1.26, 1.26, 1.27, 1.26, 1.25, 1.26, 1.27, 1.25, 1.26],
-        urban: [1.33, 1.34, 1.33, 1.33, 1.32, 1.33, 1.34, 1.33, 1.33, 1.32]
-      },
-      // 2-year peak data
-      '2yr-peak': {
-        current: [2.1956, 2.2103, 2.209, 2.2096, 2.2119, 2.2083, 2.2094, 2.2116, 2.1943, 2.185],
-        baseline: [2.4027, 2.4481, 2.4328, 2.4313, 2.4261, 2.4392, 2.4263, 2.357, 2.4254, 2.4365],
-        replant: [2.3327, 2.3218, 2.3366, 2.339, 2.3296, 2.327, 2.3238, 2.3082, 2.3203, 2.3035],
-        urban: [2.4239, 2.4264, 2.4532, 2.4207, 2.4541, 2.4471, 2.4446, 2.4456, 2.4229, 2.4531]
-      },
-      // 200-year low data
-      '200yr-low': {
-        current: [7.10, 7.21, 7.17, 7.19, 7.15, 7.22, 7.14, 7.18, 7.16, 7.20],
-        baseline: [11.58, 11.66, 11.63, 11.69, 11.61, 11.67, 11.60, 11.70, 11.62, 11.64],
-        replant: [11.44, 11.52, 11.48, 11.53, 11.47, 11.51, 11.45, 11.54, 11.46, 11.50],
-        urban: [11.61, 11.70, 11.65, 11.72, 11.64, 11.69, 11.63, 11.73, 11.66, 11.68]
-      },
-      // 200-year peak data
-      '200yr-peak': {
-        current: [15.71, 15.82, 15.90, 15.85, 15.78, 15.93, 15.88, 15.77, 15.80, 15.95],
-        baseline: [22.95, 23.12, 23.21, 23.05, 23.14, 23.07, 23.18, 22.97, 23.16, 23.09],
-        replant: [22.71, 22.85, 22.81, 22.92, 22.77, 22.88, 22.80, 22.93, 22.82, 22.75],
-        urban: [23.01, 23.15, 23.08, 23.19, 23.06, 23.17, 23.09, 23.21, 23.11, 23.05]
-      }
+      '2yr-low': { current: [1.20, 1.21, 1.22, 1.23, 1.22, 1.21, 1.22, 1.21, 1.22, 1.20], baseline: [1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.33, 1.32], replant: [1.25, 1.26, 1.26, 1.27, 1.26, 1.25, 1.26, 1.27, 1.25, 1.26], urban: [1.33, 1.34, 1.33, 1.33, 1.32, 1.33, 1.34, 1.33, 1.33, 1.32] },
+      '2yr-peak': { current: [2.1956, 2.2103, 2.209, 2.2096, 2.2119, 2.2083, 2.2094, 2.2116, 2.1943, 2.185], baseline: [2.4027, 2.4481, 2.4328, 2.4313, 2.4261, 2.4392, 2.4263, 2.357, 2.4254, 2.4365], replant: [2.3327, 2.3218, 2.3366, 2.339, 2.3296, 2.327, 2.3238, 2.3082, 2.3203, 2.3035], urban: [2.4239, 2.4264, 2.4532, 2.4207, 2.4541, 2.4471, 2.4446, 2.4456, 2.4229, 2.4531] },
+      '200yr-low': { current: [7.10, 7.21, 7.17, 7.19, 7.15, 7.22, 7.14, 7.18, 7.16, 7.20], baseline: [11.58, 11.66, 11.63, 11.69, 11.61, 11.67, 11.60, 11.70, 11.62, 11.64], replant: [11.44, 11.52, 11.48, 11.53, 11.47, 11.51, 11.45, 11.54, 11.46, 11.50], urban: [11.61, 11.70, 11.65, 11.72, 11.64, 11.69, 11.63, 11.73, 11.66, 11.68] },
+      '200yr-peak': { current: [15.71, 15.82, 15.90, 15.85, 15.78, 15.93, 15.88, 15.77, 15.80, 15.95], baseline: [22.95, 23.12, 23.21, 23.05, 23.14, 23.07, 23.18, 22.97, 23.16, 23.09], replant: [22.71, 22.85, 22.81, 22.92, 22.77, 22.88, 22.80, 22.93, 22.82, 22.75], urban: [23.01, 23.15, 23.08, 23.19, 23.06, 23.17, 23.09, 23.21, 23.11, 23.05] }
     };
     
-    // Calculate statistics
-    function calculateStats(data) {
-      const sorted = [...data].sort((a, b) => a - b);
-      const min = sorted[0];
-      const max = sorted[sorted.length - 1];
-      const q1 = sorted[Math.floor(sorted.length * 0.25)];
-      const median = sorted[Math.floor(sorted.length * 0.5)];
-      const q3 = sorted[Math.floor(sorted.length * 0.75)];
-      const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
-      
-      return { min, max, q1, median, q3, avg };
-    }
-    
-    // Generate distribution data
-    function generateDistributionData(yearGroup) {
-      const lowKey = `${yearGroup}-low`;
-      const peakKey = `${yearGroup}-peak`;
-      
-      const lowStats = {
-        current: calculateStats(boxPlotData[lowKey].current),
-        baseline: calculateStats(boxPlotData[lowKey].baseline),
-        replant: calculateStats(boxPlotData[lowKey].replant),
-        urban: calculateStats(boxPlotData[lowKey].urban)
-      };
-      
-      const peakStats = {
-        current: calculateStats(boxPlotData[peakKey].current),
-        baseline: calculateStats(boxPlotData[peakKey].baseline),
-        replant: calculateStats(boxPlotData[peakKey].replant),
-        urban: calculateStats(boxPlotData[peakKey].urban)
-      };
-      
-      return [
-        {
-          group: "Low",
-          data: [
-            { 
-              name: 'Current', 
-              min: lowStats.current.min,
-              q1: lowStats.current.q1,
-              median: lowStats.current.median,
-              q3: lowStats.current.q3,
-              max: lowStats.current.max,
-              avg: lowStats.current.avg
-            },
-            { 
-              name: '2050 Baseline', 
-              min: lowStats.baseline.min,
-              q1: lowStats.baseline.q1,
-              median: lowStats.baseline.median,
-              q3: lowStats.baseline.q3,
-              max: lowStats.baseline.max,
-              avg: lowStats.baseline.avg
-            },
-            { 
-              name: 'Replant', 
-              min: lowStats.replant.min,
-              q1: lowStats.replant.q1,
-              median: lowStats.replant.median,
-              q3: lowStats.replant.q3,
-              max: lowStats.replant.max,
-              avg: lowStats.replant.avg
-            },
-            { 
-              name: 'Urban', 
-              min: lowStats.urban.min,
-              q1: lowStats.urban.q1,
-              median: lowStats.urban.median,
-              q3: lowStats.urban.q3,
-              max: lowStats.urban.max,
-              avg: lowStats.urban.avg
-            }
-          ]
-        },
-        {
-          group: "Peak",
-          data: [
-            { 
-              name: 'Current', 
-              min: peakStats.current.min,
-              q1: peakStats.current.q1,
-              median: peakStats.current.median,
-              q3: peakStats.current.q3,
-              max: peakStats.current.max,
-              avg: peakStats.current.avg
-            },
-            { 
-              name: '2050 Baseline', 
-              min: peakStats.baseline.min,
-              q1: peakStats.baseline.q1,
-              median: peakStats.baseline.median,
-              q3: peakStats.baseline.q3,
-              max: peakStats.baseline.max,
-              avg: peakStats.baseline.avg
-            },
-            { 
-              name: 'Replant', 
-              min: peakStats.replant.min,
-              q1: peakStats.replant.q1,
-              median: peakStats.replant.median,
-              q3: peakStats.replant.q3,
-              max: peakStats.replant.max,
-              avg: peakStats.replant.avg
-            },
-            { 
-              name: 'Urban', 
-              min: peakStats.urban.min,
-              q1: peakStats.urban.q1,
-              median: peakStats.urban.median,
-              q3: peakStats.urban.q3,
-              max: peakStats.urban.max,
-              avg: peakStats.urban.avg
-            }
-          ]
-        }
-      ];
-    }
-    
-    // Update distribution charts based on selected year group
-    function updateDistributionCharts(yearGroup) {
-      const distributionData = generateDistributionData(yearGroup);
-      const yRange = yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
-      
-      // Destroy old charts if they exist
-      if (window.lowChart) window.lowChart.destroy();
-      if (window.peakChart) window.peakChart.destroy();
-      
-      // Create the new charts
-      createDistributionChart('lowChart', distributionData[0].data, yRange);
-      createDistributionChart('peakChart', distributionData[1].data, yRange);
-      
-      // Update statistics table
-      updateStatsTable(distributionData);
-    }
-    
-    // Create a distribution chart
-    function createDistributionChart(chartId, data, yRange) {
-      const canvas = document.getElementById(chartId);
-      if (!canvas) {
-        console.error(`Canvas element with ID ${chartId} not found`);
-        return;
-      }
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        console.error('Could not get 2D context for canvas');
-        return;
-      }
-      
-      // Extract data for chart.js
-      const labels = data.map(d => d.name);
-      const medians = data.map(d => d.median);
-      const mins = data.map(d => d.min);
-      const maxes = data.map(d => d.max);
-      
-      // Define colors for each scenario
-      const colors = {
-        'Current': '#0056b3',
-        '2050 Baseline': '#fd7e14',
-        'Replant': '#17a2b8',
-        'Urban': '#dc3545'
-      };
-      
-      // Create datasets for each data point
-      const datasets = [{
-        label: 'Median Values',
-        data: medians,
-        backgroundColor: data.map(d => colors[d.name] || '#888888'),
-        borderColor: data.map(d => colors[d.name] || '#888888'),
-        borderWidth: 1,
-        barPercentage: 0.6,
-        categoryPercentage: 0.8
-      }];
-      
-      // Destroy existing chart if it exists
-      if (window[chartId] instanceof Chart) {
-        window[chartId].destroy();
-      }
-      
-      // Create the chart
-      window[chartId] = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: datasets
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              min: yRange[0],
-              max: yRange[1],
-              title: {
-                display: true,
-                text: 'Max Outflow (cms)'
-              }
-            }
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                title: function(context) {
-                  return context[0].label;
-                },
-                label: function(context) {
-                  const index = context.dataIndex;
-                  if (index >= 0 && index < data.length) {
-                    return [
-                      `Median: ${data[index].median.toFixed(4)} cms`,
-                      `Min: ${data[index].min.toFixed(4)} cms`,
-                      `Max: ${data[index].max.toFixed(4)} cms`,
-                      `Avg: ${data[index].avg.toFixed(4)} cms`,
-                      `Q1: ${data[index].q1.toFixed(4)} cms`,
-                      `Q3: ${data[index].q3.toFixed(4)} cms`
-                    ];
-                  }
-                  return [];
-                }
-              }
-            }
-          }
-        }
-      });
-      
-      // Add error bars manually using canvas API
-      const chart = window[chartId];
-      
-      // Wait for the chart to be fully rendered
-      setTimeout(() => {
-        try {
-          const meta = chart.getDatasetMeta(0);
-          
-          function renderErrorBars() {
-            const ctx = chart.ctx;
-            if (!ctx) return;
-            
-            ctx.save();
-            
-            for (let i = 0; i < data.length; i++) {
-              if (!meta.data[i]) continue;
-              
-              const x = meta.data[i].x;
-              
-              // Convert min/max values to y-coordinates
-              const yMin = chart.scales.y.getPixelForValue(mins[i]);
-              const yMax = chart.scales.y.getPixelForValue(maxes[i]);
-              
-              // Draw min-max line
-              ctx.beginPath();
-              ctx.moveTo(x, yMin);
-              ctx.lineTo(x, yMax);
-              ctx.strokeStyle = colors[labels[i]] || '#888888';
-              ctx.lineWidth = 2;
-              ctx.stroke();
-              
-              // Draw caps
-              ctx.beginPath();
-              ctx.moveTo(x - 5, yMin);
-              ctx.lineTo(x + 5, yMin);
-              ctx.moveTo(x - 5, yMax);
-              ctx.lineTo(x + 5, yMax);
-              ctx.strokeStyle = colors[labels[i]] || '#888888';
-              ctx.lineWidth = 2;
-              ctx.stroke();
-            }
-            
-            ctx.restore();
-          }
-          
-          // Add event listeners for rendering error bars
-          chart.options.plugins.afterRender = renderErrorBars;
-          chart.update();
-          
-        } catch (error) {
-          console.error('Error rendering error bars:', error);
-        }
-      }, 100);
-    }
-    
-    // Update the statistics table
-    function updateStatsTable(distributionData) {
-      try {
-        const tableBody = document.getElementById('statsTable').querySelector('tbody');
-        if (!tableBody) {
-          console.error('Stats table body not found');
-          return;
-        }
-        
-        tableBody.innerHTML = '';
-        
-        // Add low data rows
-        if (distributionData[0] && distributionData[0].data) {
-          distributionData[0].data.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${item.name}</td>
-              <td>Low</td>
-              <td>${item.min.toFixed(3)}</td>
-              <td>${item.max.toFixed(3)}</td>
-              <td>${item.avg.toFixed(3)}</td>
-            `;
-            row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-            tableBody.appendChild(row);
-          });
-        }
-        
-        // Add peak data rows
-        if (distributionData[1] && distributionData[1].data) {
-          distributionData[1].data.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${item.name}</td>
-              <td>Peak</td>
-              <td>${item.min.toFixed(3)}</td>
-              <td>${item.max.toFixed(3)}</td>
-              <td>${item.avg.toFixed(3)}</td>
-            `;
-            row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
-            tableBody.appendChild(row);
-          });
-        }
-      } catch (error) {
-        console.error('Error updating stats table:', error);
-      }
-    }
-    
-    // Initialize charts
+    // Chart.js Instances (for non-React tabs)
+    let rawChartInstance, percentageChartInstance, trendChartInstance;
+
+    // Initialize charts and tabs
     document.addEventListener('DOMContentLoaded', function() {
+      const distributionTabContent = document.getElementById('distribution');
+      const distributionReactRoot = document.getElementById('distributionReactRoot');
+      
       // Initialize tabs
       const tabLinks = document.querySelectorAll('.tab-link');
       tabLinks.forEach(tab => {
         tab.addEventListener('click', function() {
-          // Get the tab id
           const tabId = this.id.replace('tab-', '');
           
-          // Hide all tabs
-          document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-          });
+          // Hide all tabs and remove active class from links
+          document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+          document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
           
-          // Show the selected tab
-          document.getElementById(tabId).classList.add('active');
-          
-          // Update active tab
-          document.querySelectorAll('.tab-link').forEach(t => {
-            t.classList.remove('active');
-          });
+          // Show the selected tab and mark link as active
+          const activeContent = document.getElementById(tabId);
+          if (activeContent) activeContent.classList.add('active');
           this.classList.add('active');
           
-          // Re-render distribution charts when switching to the distribution tab
+          // Mount/Unmount React component for Distribution tab
           if (tabId === 'distribution') {
-            const activeYearGroup = document.getElementById('period-2yr').classList.contains('active') ? '2yr' : '200yr';
-            updateDistributionCharts(activeYearGroup);
+            // Ensure Babel has processed the script before rendering
+             setTimeout(() => {
+                if (typeof DistributionAnalysisComponent !== 'undefined') {
+                    ReactDOM.render(React.createElement(DistributionAnalysisComponent), distributionReactRoot);
+                } else {
+                    console.error('DistributionAnalysisComponent not found. Babel might not have finished.');
+                }
+            }, 0);
+          } else {
+            // Unmount React component if it exists and we are switching away
+            if (distributionReactRoot.hasChildNodes()) {
+              ReactDOM.unmountComponentAtNode(distributionReactRoot);
+            }
+          }
+          
+          // Initialize Chart.js charts if they haven't been already and the tab is active
+          if (tabId === 'raw' && !rawChartInstance) {
+            initializeRawChart();
+          } else if (tabId === 'percentage' && !percentageChartInstance) {
+            initializePercentageChart();
+          } else if (tabId === 'trends' && !trendChartInstance) {
+            initializeTrendChart();
           }
         });
       });
       
-      // Initialize period buttons
-      document.getElementById('period-2yr').addEventListener('click', function() {
-        document.getElementById('period-2yr').classList.add('active');
-        document.getElementById('period-200yr').classList.remove('active');
-        document.getElementById('yearGroupTitle').textContent = '2-Year';
-        document.getElementById('yearGroupDesc').textContent = '2-year';
-        document.getElementById('insights2yr').style.display = 'block';
-        document.getElementById('insights200yr').style.display = 'none';
-        updateDistributionCharts('2yr');
-      });
-      
-      document.getElementById('period-200yr').addEventListener('click', function() {
-        document.getElementById('period-200yr').classList.add('active');
-        document.getElementById('period-2yr').classList.remove('active');
-        document.getElementById('yearGroupTitle').textContent = '200-Year';
-        document.getElementById('yearGroupDesc').textContent = '200-year';
-        document.getElementById('insights2yr').style.display = 'none';
-        document.getElementById('insights200yr').style.display = 'block';
-        updateDistributionCharts('200yr');
-      });
-      
-      // Raw Outflow Chart
-      const rawCtx = document.getElementById('rawChart').getContext('2d');
-      new Chart(rawCtx, {
-        type: 'bar',
-        data: {
-          labels: rawOutflowData.map(d => d.category),
-          datasets: [
-            {
-              label: 'Current Conditions',
-              data: rawOutflowData.map(d => d.Current),
-              backgroundColor: '#0056b3',
-              borderRadius: 4,
+      // Initialize the default active tab's chart (Raw Outflow)
+      initializeRawChart();
+
+    }); // End DOMContentLoaded
+
+    // --- Chart.js Initialization Functions ---
+    
+    function initializeRawChart() {
+        const rawCtx = document.getElementById('rawChart')?.getContext('2d');
+        if (!rawCtx) return; // Don't initialize if canvas not visible/found
+        if (rawChartInstance) rawChartInstance.destroy(); // Destroy previous instance if exists
+        rawChartInstance = new Chart(rawCtx, {
+            type: 'bar',
+            data: {
+            labels: rawOutflowData.map(d => d.category),
+            datasets: [
+                { label: 'Current Conditions', data: rawOutflowData.map(d => d.Current), backgroundColor: '#0056b3', borderRadius: 4 },
+                { label: '2050 Baseline (ViT)', data: rawOutflowData.map(d => d.Baseline), backgroundColor: '#fd7e14', borderRadius: 4 },
+                { label: 'Replanting Efforts', data: rawOutflowData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 },
+                { label: 'Urban Development', data: rawOutflowData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 }
+            ]
             },
-            {
-              label: '2050 Baseline (ViT)',
-              data: rawOutflowData.map(d => d.Baseline),
-              backgroundColor: '#fd7e14',
-              borderRadius: 4,
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Max Outflow (cms)' } } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(2)} cms`; } } } } }
+        });
+    }
+
+    function initializePercentageChart() {
+        const percentageCtx = document.getElementById('percentageChart')?.getContext('2d');
+        if (!percentageCtx) return;
+        if (percentageChartInstance) percentageChartInstance.destroy();
+        percentageChartInstance = new Chart(percentageCtx, {
+            type: 'bar',
+            data: {
+            labels: percentageChangeData.map(d => d.category),
+            datasets: [
+                { label: 'Urban vs 2050', data: percentageChangeData.map(d => d.Urban), backgroundColor: '#dc3545', borderRadius: 4 },
+                { label: 'Replant vs 2050', data: percentageChangeData.map(d => d.Replant), backgroundColor: '#17a2b8', borderRadius: 4 }
+            ]
             },
-            {
-              label: 'Replanting Efforts',
-              data: rawOutflowData.map(d => d.Replant),
-              backgroundColor: '#17a2b8',
-              borderRadius: 4,
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Change from Baseline (%)' }, ticks: { callback: function(value) { return value.toFixed(1) + '%'; } }, min: -6, max: 2 } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(2)}%`; } } } } }
+        });
+    }
+
+    function initializeTrendChart() {
+        const trendCtx = document.getElementById('trendChart')?.getContext('2d');
+        if (!trendCtx) return;
+        if (trendChartInstance) trendChartInstance.destroy();
+        trendChartInstance = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+            labels: trendData.map(d => d.name),
+            datasets: [
+                { label: 'Current Conditions', data: trendData.map(d => d.Current), borderColor: '#0056b3', backgroundColor: '#0056b3', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                { label: '2050 Baseline (ViT)', data: trendData.map(d => d.Baseline), borderColor: '#fd7e14', backgroundColor: '#fd7e14', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                { label: 'Replanting Efforts', data: trendData.map(d => d.Replant), borderColor: '#17a2b8', backgroundColor: '#17a2b8', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 },
+                { label: 'Urban Development', data: trendData.map(d => d.Urban), borderColor: '#dc3545', backgroundColor: '#dc3545', tension: 0.1, borderWidth: 3, pointRadius: 6, pointHoverRadius: 8 }
+            ]
             },
-            {
-              label: 'Urban Development',
-              data: rawOutflowData.map(d => d.Urban),
-              backgroundColor: '#dc3545',
-              borderRadius: 4,
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Change from Current (%)' }, ticks: { callback: function(value) { return value + '%'; } }, min: 0, max: 70 } }, plugins: { tooltip: { callbacks: { label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(1)}%`; }, title: function(context) { return `Return Period: ${context[0].label}`; } } } } }
+        });
+    }
+    
+  </script>
+
+  <!-- React Component Definition (using Babel for JSX) -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } = Recharts;
+
+    // --- Helper Functions (copied from modern-water-dashboard.jsx) ---
+    const calculateStats = (data) => {
+        if (!data || data.length === 0) return { min: 0, max: 0, q1: 0, median: 0, q3: 0, avg: 0 };
+        const sorted = [...data].sort((a, b) => a - b);
+        const min = sorted[0];
+        const max = sorted[sorted.length - 1];
+        const q1 = sorted[Math.floor(sorted.length * 0.25)];
+        const median = sorted[Math.floor(sorted.length * 0.5)];
+        const q3 = sorted[Math.floor(sorted.length * 0.75)];
+        const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
+        return { min, max, q1, median, q3, avg };
+    };
+
+    const getDistributionYAxisRange = (yearGroup) => {
+        return yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
+    };
+
+    const generateAreaDistributionData = (yearGroup) => {
+        const lowKey = `${yearGroup}-low`;
+        const peakKey = `${yearGroup}-peak`;
+        
+        const lowStats = {
+            current: calculateStats(boxPlotData[lowKey]?.current),
+            baseline: calculateStats(boxPlotData[lowKey]?.baseline),
+            replant: calculateStats(boxPlotData[lowKey]?.replant),
+            urban: calculateStats(boxPlotData[lowKey]?.urban)
+        };
+        
+        const peakStats = {
+            current: calculateStats(boxPlotData[peakKey]?.current),
+            baseline: calculateStats(boxPlotData[peakKey]?.baseline),
+            replant: calculateStats(boxPlotData[peakKey]?.replant),
+            urban: calculateStats(boxPlotData[peakKey]?.urban)
+        };
+        
+        const mapData = (stats, type) => ([
+            { name: 'Current', ...stats.current, type },
+            { name: '2050 Baseline', ...stats.baseline, type },
+            { name: 'Replant', ...stats.replant, type },
+            { name: 'Urban', ...stats.urban, type }
+        ]);
+
+        return [
+            { group: "Low", data: mapData(lowStats, "Low") },
+            { group: "Peak", data: mapData(peakStats, "Peak") }
+        ];
+    };
+
+    // --- React Component for Distribution Tab ---
+    function DistributionAnalysisComponent() {
+        const [selectedYearGroup, setSelectedYearGroup] = useState('2yr');
+        const [chartHover, setChartHover] = useState(null); // Optional hover state
+
+        // Regenerate data when selectedYearGroup changes
+        const areaDistributionData = generateAreaDistributionData(selectedYearGroup);
+        const yAxisRange = getDistributionYAxisRange(selectedYearGroup);
+
+        const DistributionTooltip = ({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+                const data = payload[0].payload; // Access the data point object
+                return (
+                    <div className="bg-white p-3 rounded shadow-lg border border-gray-200 text-xs">
+                        <div className="font-semibold text-gray-800 mb-1">{data.name} - {data.type}</div>
+                        <div className="space-y-1">
+                            <div>Min: {data.min?.toFixed(4)} cms</div>
+                            <div>Q1: {data.q1?.toFixed(4)} cms</div>
+                            <div className="font-medium">Median: {data.median?.toFixed(4)} cms</div>
+                            <div>Q3: {data.q3?.toFixed(4)} cms</div>
+                            <div>Max: {data.max?.toFixed(4)} cms</div>
+                            <div className="font-medium">Average: {data.avg?.toFixed(4)} cms</div>
+                        </div>
+                    </div>
+                );
             }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Max Outflow (cms)'
-              }
-            }
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.dataset.label}: ${context.raw.toFixed(2)} cms`;
-                }
-              }
-            }
-          }
-        }
-      });
-      
-      // Percentage Change Chart
-      const percentageCtx = document.getElementById('percentageChart').getContext('2d');
-      new Chart(percentageCtx, {
-        type: 'bar',
-        data: {
-          labels: percentageChangeData.map(d => d.category),
-          datasets: [
-            {
-              label: 'Urban vs 2050',
-              data: percentageChangeData.map(d => d.Urban),
-              backgroundColor: '#dc3545',
-              borderRadius: 4,
-            },
-            {
-              label: 'Replant vs 2050',
-              data: percentageChangeData.map(d => d.Replant),
-              backgroundColor: '#17a2b8',
-              borderRadius: 4,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              title: {
-                display: true,
-                text: 'Change from Baseline (%)'
-              },
-              ticks: {
-                callback: function(value) {
-                  return value.toFixed(1) + '%';
-                }
-              },
-              min: -6,
-              max: 2
-            }
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
-                }
-              }
-            }
-          }
-        }
-      });
-      
-      // Trend Analysis Chart
-      const trendCtx = document.getElementById('trendChart').getContext('2d');
-      new Chart(trendCtx, {
-        type: 'line',
-        data: {
-          labels: trendData.map(d => d.name),
-          datasets: [
-            {
-              label: 'Current Conditions',
-              data: trendData.map(d => d.Current),
-              borderColor: '#0056b3',
-              backgroundColor: '#0056b3',
-              tension: 0.1,
-              borderWidth: 3,
-              pointRadius: 6,
-              pointHoverRadius: 8
-            },
-            {
-              label: '2050 Baseline (ViT)',
-              data: trendData.map(d => d.Baseline),
-              borderColor: '#fd7e14',
-              backgroundColor: '#fd7e14',
-              tension: 0.1,
-              borderWidth: 3,
-              pointRadius: 6,
-              pointHoverRadius: 8
-            },
-            {
-              label: 'Replanting Efforts',
-              data: trendData.map(d => d.Replant),
-              borderColor: '#17a2b8',
-              backgroundColor: '#17a2b8',
-              tension: 0.1,
-              borderWidth: 3,
-              pointRadius: 6,
-              pointHoverRadius: 8
-            },
-            {
-              label: 'Urban Development',
-              data: trendData.map(d => d.Urban),
-              borderColor: '#dc3545',
-              backgroundColor: '#dc3545',
-              tension: 0.1,
-              borderWidth: 3,
-              pointRadius: 6,
-              pointHoverRadius: 8
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              title: {
-                display: true,
-                text: 'Change from Current (%)'
-              },
-              ticks: {
-                callback: function(value) {
-                  return value + '%';
-                }
-              },
-              min: 0,
-              max: 70
-            }
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.dataset.label}: ${context.raw.toFixed(1)}%`;
-                },
-                title: function(context) {
-                  return `Return Period: ${context[0].label}`;
-                }
-              }
-            }
-          }
-        }
-      });
-      
-      // Initialize distribution charts with 2yr data
-      // Using setTimeout to ensure DOM is fully ready
-      setTimeout(() => {
-        updateDistributionCharts('2yr');
-        console.log('Distribution charts initialized');
-      }, 300);
-    });
+            return null;
+        };
+
+        return (
+            <div>
+                <h2 className="text-xl font-semibold text-gray-800 mb-1">
+                    Distribution Analysis ({selectedYearGroup === '2yr' ? '2-Year' : '200-Year'} Return Period)
+                </h2>
+                <p className="text-gray-600 mb-4 text-sm italic">Combined low and peak scenario distribution</p>
+                
+                {/* Period selector */}
+                <div className="flex flex-wrap mb-6">
+                    <button 
+                        onClick={() => setSelectedYearGroup('2yr')} 
+                        className={`px-4 py-2 mr-2 mb-2 text-sm rounded-md transition-colors ${
+                        selectedYearGroup === '2yr' 
+                            ? 'bg-blue-700 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                        2-Year Return Period
+                    </button>
+                    <button 
+                        onClick={() => setSelectedYearGroup('200yr')} 
+                        className={`px-4 py-2 mb-2 text-sm rounded-md transition-colors ${
+                        selectedYearGroup === '200yr' 
+                            ? 'bg-blue-700 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                        200-Year Return Period
+                    </button>
+                </div>
+                
+                <div 
+                    className="bg-blue-50 p-4 rounded-lg mb-6 border-l-4 border-blue-500"
+                    onMouseEnter={() => setChartHover('dist')}
+                    onMouseLeave={() => setChartHover(null)}
+                >
+                    <p className={`transition-opacity duration-300 ${chartHover === 'dist' ? 'opacity-100' : 'opacity-70'} text-sm`}>
+                        This chart visualizes the statistical distribution of max outflow values for both low and peak events in
+                        the {selectedYearGroup === '2yr' ? '2-year' : '200-year'} return period. Each chart shows min/max range, 
+                        quartiles (colored areas), median (line), and average values (dots).
+                    </p>
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center justify-center mb-6 text-xs text-gray-600 flex-wrap">
+                    <div className="flex items-center mr-4 mb-2">
+                        <div className="w-4 h-4 bg-blue-100 border border-blue-500 mr-1"></div>
+                        <div className="w-px h-4 bg-blue-700 mx-1"></div>
+                        <span>= 25%-75% Quartiles (Median Line)</span>
+                    </div>
+                    <div className="flex items-center mr-4 mb-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500 mr-1"></div>
+                        <span>= Average Value</span>
+                    </div>
+                     <div className="flex items-center mr-4 mb-2">
+                        <div className="w-4 h-px border-t-2 border-b-2 border-transparent mr-1"></div>
+                         <span>= Min/Max Range (Whisker)</span>
+                    </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Low Event Chart */}
+                    <div>
+                        <h3 className="text-lg font-medium text-center mb-2 text-gray-700">Low Events</h3>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                data={areaDistributionData[0].data}
+                                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                                >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                <YAxis 
+                                    domain={yAxisRange}
+                                    label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 }, dx:-10 }}
+                                    tick={{ fontSize: 10 }}
+                                    tickFormatter={(val) => val.toFixed(1)}
+                                />
+                                <Tooltip content={<DistributionTooltip />} />
+                                
+                                {/* Invisible areas to define stack boundaries */}
+                                <Area type="monotone" dataKey="min" stackId="1" stroke="none" fill="transparent" />
+                                <Area type="monotone" dataKey="max" stackId="1" stroke="none" fill="transparent" />
+                                
+                                {/* Quartile 1 to Median Area (Lower part of box) */}
+                                <Area type="monotone" dataKey={d => d.median - d.q1} stackId="2" stroke="none" fill="rgba(0,86,179,0.2)" name="Q1-Median"/>
+                                {/* Median to Quartile 3 Area (Upper part of box) */}
+                                <Area type="monotone" dataKey={d => d.q3 - d.median} stackId="2" stroke="none" fill="rgba(0,86,179,0.2)" name="Median-Q3"/>
+
+                                {/* Median Line */}
+                                <Line type="monotone" dataKey="median" stroke="#0056b3" strokeWidth={2} dot={false} activeDot={false} name="Median"/>
+                                
+                                {/* Min/Max Whiskers (using Line) */}
+                                <Line type="monotone" dataKey="min" stroke="#6c757d" strokeWidth={1} dot={false} activeDot={false} name="Min"/>
+                                <Line type="monotone" dataKey="max" stroke="#6c757d" strokeWidth={1} dot={false} activeDot={false} name="Max"/>
+
+                                {/* Average Dot (using Line with only dots) */}
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="avg" 
+                                    stroke="transparent" // Hide the line itself
+                                    dot={{ r: 4, fill: '#2196F3', strokeWidth: 1, stroke: '#0056b3' }}
+                                    activeDot={{ r: 6 }}
+                                    name="Average"
+                                />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    
+                    {/* Peak Event Chart */}
+                    <div>
+                        <h3 className="text-lg font-medium text-center mb-2 text-gray-700">Peak Events</h3>
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                data={areaDistributionData[1].data}
+                                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                                >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                <YAxis 
+                                    domain={yAxisRange}
+                                    label={{ value: `Max Outflow (cms)`, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: 11 }, dx:-10 }}
+                                    tick={{ fontSize: 10 }}
+                                    tickFormatter={(val) => val.toFixed(1)}
+                                />
+                                <Tooltip content={<DistributionTooltip />} />
+                                
+                                {/* Invisible areas */}
+                                <Area type="monotone" dataKey="min" stackId="1" stroke="none" fill="transparent" />
+                                <Area type="monotone" dataKey="max" stackId="1" stroke="none" fill="transparent" />
+                                
+                                {/* Quartiles */}
+                                <Area type="monotone" dataKey={d => d.median - d.q1} stackId="2" stroke="none" fill="rgba(220,53,69,0.2)" name="Q1-Median"/>
+                                <Area type="monotone" dataKey={d => d.q3 - d.median} stackId="2" stroke="none" fill="rgba(220,53,69,0.2)" name="Median-Q3"/>
+
+                                {/* Median Line */}
+                                <Line type="monotone" dataKey="median" stroke="#dc3545" strokeWidth={2} dot={false} activeDot={false} name="Median"/>
+                                
+                                {/* Min/Max Whiskers */}
+                                <Line type="monotone" dataKey="min" stroke="#6c757d" strokeWidth={1} dot={false} activeDot={false} name="Min"/>
+                                <Line type="monotone" dataKey="max" stroke="#6c757d" strokeWidth={1} dot={false} activeDot={false} name="Max"/>
+
+                                {/* Average Dot */}
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="avg" 
+                                    stroke="transparent" 
+                                    dot={{ r: 4, fill: '#dc3545', strokeWidth: 1, stroke: '#b02a37' }}
+                                    activeDot={{ r: 6 }}
+                                    name="Average"
+                                />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Statistics and Insights */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <div className="bg-gray-100 p-4 rounded-lg">
+                        <h3 className="font-semibold text-lg mb-2 text-gray-800">Key Statistics</h3>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white rounded-lg overflow-hidden text-xs">
+                                <thead className="bg-gray-200">
+                                <tr>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Scenario</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Type</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Min</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Max</th>
+                                    <th className="px-3 py-2 text-left font-semibold text-gray-700">Average</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {areaDistributionData[0].data.map((item, index) => (
+                                    <tr key={`low-${index}`} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                    <td className="px-3 py-2 text-gray-800 font-medium">{item.name}</td>
+                                    <td className="px-3 py-2 text-gray-800">Low</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.min?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.max?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.avg?.toFixed(3)}</td>
+                                    </tr>
+                                ))}
+                                {areaDistributionData[1].data.map((item, index) => (
+                                    <tr key={`peak-${index}`} className={index % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                                    <td className="px-3 py-2 text-gray-800 font-medium">{item.name}</td>
+                                    <td className="px-3 py-2 text-gray-800">Peak</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.min?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.max?.toFixed(3)}</td>
+                                    <td className="px-3 py-2 text-gray-800">{item.avg?.toFixed(3)}</td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-gray-100 p-4 rounded-lg">
+                        <h3 className="font-semibold text-lg mb-2 text-gray-800">Key Insights</h3>
+                        {selectedYearGroup === '2yr' ? (
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
+                            <li>The <span className="font-medium">Urban</span> scenario shows the highest peak flow values (~2.44 cms avg).</li>
+                            <li>The <span className="font-medium">Current</span> conditions have the lowest outflow values across both low and peak events.</li>
+                            <li>The <span className="font-medium">Replant</span> strategy shows noticeable reduction compared to Baseline, especially for peak events.</li>
+                            <li>The relative difference between low and peak events stays consistent across all scenarios.</li>
+                        </ul>
+                        ) : (
+                        <ul className="list-disc pl-5 space-y-2 text-sm text-gray-800">
+                            <li>All future scenarios show dramatically higher values (~60%+) compared to current conditions.</li>
+                            <li>The <span className="font-medium">Replant</span> scenario offers minimal reduction for extreme 200-year events compared to Baseline.</li>
+                            <li>The <span className="font-medium">Urban</span> development impact becomes less significant relative to Baseline at 200-year peak events.</li>
+                            <li>The gap between low and peak values is much wider than in 2-year return periods.</li>
+                        </ul>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
+    // Make the component globally available for the main script
+    window.DistributionAnalysisComponent = DistributionAnalysisComponent;
+
   </script>
 </body>
 </html>
