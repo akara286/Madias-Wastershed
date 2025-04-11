@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Dashboard</title>
   
-  <!-- Chart.js -->
+  <!-- Chart.js and required plugins -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
   
   <style>
     body {
@@ -586,7 +587,17 @@
     
     // Create a distribution chart
     function createDistributionChart(chartId, data, yRange) {
-      const ctx = document.getElementById(chartId).getContext('2d');
+      const canvas = document.getElementById(chartId);
+      if (!canvas) {
+        console.error(`Canvas element with ID ${chartId} not found`);
+        return;
+      }
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('Could not get 2D context for canvas');
+        return;
+      }
       
       // Extract data for chart.js
       const labels = data.map(d => d.name);
@@ -606,12 +617,17 @@
       const datasets = [{
         label: 'Median Values',
         data: medians,
-        backgroundColor: data.map(d => colors[d.name]),
-        borderColor: data.map(d => colors[d.name]),
+        backgroundColor: data.map(d => colors[d.name] || '#888888'),
+        borderColor: data.map(d => colors[d.name] || '#888888'),
         borderWidth: 1,
         barPercentage: 0.6,
         categoryPercentage: 0.8
       }];
+      
+      // Destroy existing chart if it exists
+      if (window[chartId] instanceof Chart) {
+        window[chartId].destroy();
+      }
       
       // Create the chart
       window[chartId] = new Chart(ctx, {
@@ -641,25 +657,17 @@
                 },
                 label: function(context) {
                   const index = context.dataIndex;
-                  return [
-                    `Median: ${data[index].median.toFixed(4)} cms`,
-                    `Min: ${data[index].min.toFixed(4)} cms`,
-                    `Max: ${data[index].max.toFixed(4)} cms`,
-                    `Avg: ${data[index].avg.toFixed(4)} cms`,
-                    `Q1: ${data[index].q1.toFixed(4)} cms`,
-                    `Q3: ${data[index].q3.toFixed(4)} cms`
-                  ];
-                }
-              }
-            },
-            annotation: {
-              annotations: {
-                line1: {
-                  type: 'line',
-                  yMin: 3,
-                  yMax: 3,
-                  borderColor: 'rgb(255, 99, 132)',
-                  borderWidth: 2,
+                  if (index >= 0 && index < data.length) {
+                    return [
+                      `Median: ${data[index].median.toFixed(4)} cms`,
+                      `Min: ${data[index].min.toFixed(4)} cms`,
+                      `Max: ${data[index].max.toFixed(4)} cms`,
+                      `Avg: ${data[index].avg.toFixed(4)} cms`,
+                      `Q1: ${data[index].q1.toFixed(4)} cms`,
+                      `Q3: ${data[index].q3.toFixed(4)} cms`
+                    ];
+                  }
+                  return [];
                 }
               }
             }
@@ -669,78 +677,104 @@
       
       // Add error bars manually using canvas API
       const chart = window[chartId];
-      const meta = chart.getDatasetMeta(0);
       
-      chart.canvas.addEventListener('afterRender', function() {
-        const ctx = chart.ctx;
-        ctx.save();
-        
-        for (let i = 0; i < data.length; i++) {
-          if (!meta.data[i]) continue;
+      // Wait for the chart to be fully rendered
+      setTimeout(() => {
+        try {
+          const meta = chart.getDatasetMeta(0);
           
-          const x = meta.data[i].x;
-          const width = meta.data[i].width / 2;
+          function renderErrorBars() {
+            const ctx = chart.ctx;
+            if (!ctx) return;
+            
+            ctx.save();
+            
+            for (let i = 0; i < data.length; i++) {
+              if (!meta.data[i]) continue;
+              
+              const x = meta.data[i].x;
+              
+              // Convert min/max values to y-coordinates
+              const yMin = chart.scales.y.getPixelForValue(mins[i]);
+              const yMax = chart.scales.y.getPixelForValue(maxes[i]);
+              
+              // Draw min-max line
+              ctx.beginPath();
+              ctx.moveTo(x, yMin);
+              ctx.lineTo(x, yMax);
+              ctx.strokeStyle = colors[labels[i]] || '#888888';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              
+              // Draw caps
+              ctx.beginPath();
+              ctx.moveTo(x - 5, yMin);
+              ctx.lineTo(x + 5, yMin);
+              ctx.moveTo(x - 5, yMax);
+              ctx.lineTo(x + 5, yMax);
+              ctx.strokeStyle = colors[labels[i]] || '#888888';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+            
+            ctx.restore();
+          }
           
-          // Convert min/max values to y-coordinates
-          const yMin = chart.scales.y.getPixelForValue(mins[i]);
-          const yMax = chart.scales.y.getPixelForValue(maxes[i]);
-          const yMedian = chart.scales.y.getPixelForValue(medians[i]);
+          // Add event listeners for rendering error bars
+          chart.options.plugins.afterRender = renderErrorBars;
+          chart.update();
           
-          // Draw min-max line
-          ctx.beginPath();
-          ctx.moveTo(x, yMin);
-          ctx.lineTo(x, yMax);
-          ctx.strokeStyle = colors[labels[i]];
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          
-          // Draw caps
-          ctx.beginPath();
-          ctx.moveTo(x - 5, yMin);
-          ctx.lineTo(x + 5, yMin);
-          ctx.moveTo(x - 5, yMax);
-          ctx.lineTo(x + 5, yMax);
-          ctx.strokeStyle = colors[labels[i]];
-          ctx.lineWidth = 2;
-          ctx.stroke();
+        } catch (error) {
+          console.error('Error rendering error bars:', error);
         }
-        
-        ctx.restore();
-      });
+      }, 100);
     }
     
     // Update the statistics table
     function updateStatsTable(distributionData) {
-      const tableBody = document.getElementById('statsTable').querySelector('tbody');
-      tableBody.innerHTML = '';
-      
-      // Add low data rows
-      distributionData[0].data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>Low</td>
-          <td>${item.min.toFixed(3)}</td>
-          <td>${item.max.toFixed(3)}</td>
-          <td>${item.avg.toFixed(3)}</td>
-        `;
-        row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-        tableBody.appendChild(row);
-      });
-      
-      // Add peak data rows
-      distributionData[1].data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>Peak</td>
-          <td>${item.min.toFixed(3)}</td>
-          <td>${item.max.toFixed(3)}</td>
-          <td>${item.avg.toFixed(3)}</td>
-        `;
-        row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
-        tableBody.appendChild(row);
-      });
+      try {
+        const tableBody = document.getElementById('statsTable').querySelector('tbody');
+        if (!tableBody) {
+          console.error('Stats table body not found');
+          return;
+        }
+        
+        tableBody.innerHTML = '';
+        
+        // Add low data rows
+        if (distributionData[0] && distributionData[0].data) {
+          distributionData[0].data.forEach((item, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${item.name}</td>
+              <td>Low</td>
+              <td>${item.min.toFixed(3)}</td>
+              <td>${item.max.toFixed(3)}</td>
+              <td>${item.avg.toFixed(3)}</td>
+            `;
+            row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+            tableBody.appendChild(row);
+          });
+        }
+        
+        // Add peak data rows
+        if (distributionData[1] && distributionData[1].data) {
+          distributionData[1].data.forEach((item, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${item.name}</td>
+              <td>Peak</td>
+              <td>${item.min.toFixed(3)}</td>
+              <td>${item.max.toFixed(3)}</td>
+              <td>${item.avg.toFixed(3)}</td>
+            `;
+            row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
+            tableBody.appendChild(row);
+          });
+        }
+      } catch (error) {
+        console.error('Error updating stats table:', error);
+      }
     }
     
     // Initialize charts
@@ -765,6 +799,12 @@
             t.classList.remove('active');
           });
           this.classList.add('active');
+          
+          // Re-render distribution charts when switching to the distribution tab
+          if (tabId === 'distribution') {
+            const activeYearGroup = document.getElementById('period-2yr').classList.contains('active') ? '2yr' : '200yr';
+            updateDistributionCharts(activeYearGroup);
+          }
         });
       });
       
@@ -980,7 +1020,11 @@
       });
       
       // Initialize distribution charts with 2yr data
-      updateDistributionCharts('2yr');
+      // Using setTimeout to ensure DOM is fully ready
+      setTimeout(() => {
+        updateDistributionCharts('2yr');
+        console.log('Distribution charts initialized');
+      }, 300);
     });
   </script>
 </body>
