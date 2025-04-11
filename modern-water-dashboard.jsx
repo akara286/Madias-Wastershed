@@ -9,68 +9,27 @@ function ModernWaterDashboard() {
   const [chartHover, setChartHover] = useState(null);
   const [selectedYearGroup, setSelectedYearGroup] = useState('2yr'); // '2yr' or '200yr'
 
-  // Chart data from the HTML
-  const rawOutflowData = [
-    { category: '2yr - Low', Current: 1.216666, Baseline: 1.326637, Replant: 1.261602, Urban: 1.332193 },
-    { category: '2yr - Peak', Current: 2.198027, Baseline: 2.427346, Replant: 2.323949, Urban: 2.43629 },
-    { category: '200yr - Low', Current: 7.177433, Baseline: 11.651535, Replant: 11.504162, Urban: 11.678737 },
-    { category: '200yr - Peak', Current: 15.84633, Baseline: 23.097431, Replant: 22.843051, Urban: 23.118788 }
-  ];
+    // Data loaded from Excel (using globals)
+  const rawOutflowData = window.rawOutflowData || [];
+  const percentageChangeData = window.percentageChangeData || [];
+  const trendData = window.trendData || [];
+  const boxPlotData = window.boxPlotData || {};
+
+  // Poll for data availability and show a loading state if not ready
+  const [dataLoaded, setDataLoaded] = useState(false);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (window.rawOutflowData && window.rawOutflowData.length > 0) {
+        setDataLoaded(true);
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
   
-  const percentageChangeData = [
-    { category: '2yr - Low', Urban: 0.4188, Replant: -4.9022 },
-    { category: '2yr - Peak', Urban: 0.3685, Replant: -4.2597 },
-    { category: '200yr - Low', Urban: 0.2335, Replant: -1.2648 },
-    { category: '200yr - Peak', Urban: 0.0925, Replant: -1.1013 }
-  ];
-  
-  // Create trend data for line chart visualization
-  const trendData = rawOutflowData.map(item => {
-    return {
-      name: item.category,
-      Current: 0, // Current is always 0% (reference point)
-      Baseline: ((item.Baseline - item.Current) / item.Current) * 100,
-      Replant: ((item.Replant - item.Current) / item.Current) * 100,
-      Urban: ((item.Urban - item.Current) / item.Current) * 100,
-      // Raw values for tooltip
-      rawCurrent: item.Current,
-      rawBaseline: item.Baseline,
-      rawReplant: item.Replant,
-      rawUrban: item.Urban
-    };
-  });
-  
-  // Boxplot data
-  const boxPlotData = {
-    // 2-year low data
-    '2yr-low': {
-      current: [1.20, 1.21, 1.22, 1.23, 1.22, 1.21, 1.22, 1.21, 1.22, 1.20],
-      baseline: [1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.32, 1.33, 1.33, 1.32],
-      replant: [1.25, 1.26, 1.26, 1.27, 1.26, 1.25, 1.26, 1.27, 1.25, 1.26],
-      urban: [1.33, 1.34, 1.33, 1.33, 1.32, 1.33, 1.34, 1.33, 1.33, 1.32]
-    },
-    // 2-year peak data
-    '2yr-peak': {
-      current: [2.1956, 2.2103, 2.209, 2.2096, 2.2119, 2.2083, 2.2094, 2.2116, 2.1943, 2.185],
-      baseline: [2.4027, 2.4481, 2.4328, 2.4313, 2.4261, 2.4392, 2.4263, 2.357, 2.4254, 2.4365],
-      replant: [2.3327, 2.3218, 2.3366, 2.339, 2.3296, 2.327, 2.3238, 2.3082, 2.3203, 2.3035],
-      urban: [2.4239, 2.4264, 2.4532, 2.4207, 2.4541, 2.4471, 2.4446, 2.4456, 2.4229, 2.4531]
-    },
-    // 200-year low data
-    '200yr-low': {
-      current: [7.10, 7.21, 7.17, 7.19, 7.15, 7.22, 7.14, 7.18, 7.16, 7.20],
-      baseline: [11.58, 11.66, 11.63, 11.69, 11.61, 11.67, 11.60, 11.70, 11.62, 11.64],
-      replant: [11.44, 11.52, 11.48, 11.53, 11.47, 11.51, 11.45, 11.54, 11.46, 11.50],
-      urban: [11.61, 11.70, 11.65, 11.72, 11.64, 11.69, 11.63, 11.73, 11.66, 11.68]
-    },
-    // 200-year peak data
-    '200yr-peak': {
-      current: [15.71, 15.82, 15.90, 15.85, 15.78, 15.93, 15.88, 15.77, 15.80, 15.95],
-      baseline: [22.95, 23.12, 23.21, 23.05, 23.14, 23.07, 23.18, 22.97, 23.16, 23.09],
-      replant: [22.71, 22.85, 22.81, 22.92, 22.77, 22.88, 22.80, 22.93, 22.82, 22.75],
-      urban: [23.01, 23.15, 23.08, 23.19, 23.06, 23.17, 23.09, 23.21, 23.11, 23.05]
-    }
-  };
+  if (!dataLoaded) {
+    return <div>Loading data...</div>;
+  }
 
   // Calculate statistics for box plot visualization (simplified)
   const calculateStats = (data) => {
