@@ -6,7 +6,7 @@
   <title>Water Dashboard</title>
   
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
   
   <style>
     body {
@@ -29,14 +29,14 @@
       padding: 2rem 1rem;
     }
     
-    .tabs {
+    .tab-links {
       display: flex;
       flex-wrap: wrap;
       border-bottom: 1px solid #dee2e6;
       margin-bottom: 2rem;
     }
     
-    .tab {
+    .tab-link {
       padding: 0.75rem 1rem;
       cursor: pointer;
       background-color: #f1f1f1;
@@ -47,14 +47,14 @@
       transition: all 0.3s;
     }
     
-    .tab.active {
+    .tab-link.active {
       background-color: white;
       border-bottom: 3px solid #1976d2;
       color: #1976d2;
       font-weight: bold;
     }
     
-    .tab:hover:not(.active) {
+    .tab-link:hover:not(.active) {
       background-color: #e9ecef;
     }
     
@@ -179,11 +179,11 @@
   </header>
   
   <main class="container">
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('raw')">Raw Outflow</button>
-      <button class="tab" onclick="switchTab('distribution')">Distribution Analysis</button>
-      <button class="tab" onclick="switchTab('percentage')">Percentage Change</button>
-      <button class="tab" onclick="switchTab('trends')">Trend Analysis</button>
+    <div class="tab-links">
+      <button class="tab-link active" id="tab-raw">Raw Outflow</button>
+      <button class="tab-link" id="tab-distribution">Distribution Analysis</button>
+      <button class="tab-link" id="tab-percentage">Percentage Change</button>
+      <button class="tab-link" id="tab-trends">Trend Analysis</button>
     </div>
     
     <!-- Raw Outflow Tab -->
@@ -209,8 +209,8 @@
       <p class="subtitle">Combined low and peak scenario distribution</p>
       
       <div class="period-toggle">
-        <button class="period-button active" onclick="updatePeriod('2yr')">2-Year Return Period</button>
-        <button class="period-button" onclick="updatePeriod('200yr')">200-Year Return Period</button>
+        <button class="period-button active" id="period-2yr">2-Year Return Period</button>
+        <button class="period-button" id="period-200yr">200-Year Return Period</button>
       </div>
       
       <div class="info-box">
@@ -520,49 +520,173 @@
       ];
     }
     
-    // Switch tab function
-    function switchTab(tabId) {
-      // Hide all tab content
-      document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
+    // Update distribution charts based on selected year group
+    function updateDistributionCharts(yearGroup) {
+      const areaDistributionData = generateAreaDistributionData(yearGroup);
+      const yRange = yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
+      
+      // Create bar charts for low and peak events
+      if (window.lowChart) window.lowChart.destroy();
+      if (window.peakChart) window.peakChart.destroy();
+      
+      const lowCtx = document.getElementById('lowChart').getContext('2d');
+      window.lowChart = new Chart(lowCtx, createBoxPlotConfig(areaDistributionData[0].data, yRange, 'Low'));
+      
+      const peakCtx = document.getElementById('peakChart').getContext('2d');
+      window.peakChart = new Chart(peakCtx, createBoxPlotConfig(areaDistributionData[1].data, yRange, 'Peak'));
+      
+      // Update statistics table
+      const tableBody = document.getElementById('statsTable').querySelector('tbody');
+      tableBody.innerHTML = '';
+      
+      // Add low data rows
+      areaDistributionData[0].data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>Low</td>
+          <td>${item.min.toFixed(3)}</td>
+          <td>${item.max.toFixed(3)}</td>
+          <td>${item.avg.toFixed(3)}</td>
+        `;
+        row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+        tableBody.appendChild(row);
       });
       
-      // Show selected tab content
-      document.getElementById(tabId).classList.add('active');
-      
-      // Update active tab styling
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
+      // Add peak data rows
+      areaDistributionData[1].data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>Peak</td>
+          <td>${item.min.toFixed(3)}</td>
+          <td>${item.max.toFixed(3)}</td>
+          <td>${item.avg.toFixed(3)}</td>
+        `;
+        row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
+        tableBody.appendChild(row);
       });
-      
-      // Find the tab with the matching onclick attribute and add the active class
-      document.querySelector(`button[onclick="switchTab('${tabId}')"]`).classList.add('active');
     }
     
-    // Period update function
-    function updatePeriod(period) {
-      // Update active button styling
-      document.querySelectorAll('.period-button').forEach(button => {
-        button.classList.remove('active');
-      });
+    // Create box plot configuration
+    function createBoxPlotConfig(data, yRange, eventType) {
+      const colors = {
+        'Current': '#0056b3',
+        '2050 Baseline': '#fd7e14',
+        'Replant': '#17a2b8',
+        'Urban': '#dc3545'
+      };
       
-      // Add active class to clicked button
-      document.querySelector(`button[onclick="updatePeriod('${period}')"]`).classList.add('active');
+      const bgColors = {
+        'Low': {
+          'Current': 'rgba(0,86,179,0.2)',
+          '2050 Baseline': 'rgba(253,126,20,0.2)',
+          'Replant': 'rgba(23,162,184,0.2)',
+          'Urban': 'rgba(220,53,69,0.2)'
+        },
+        'Peak': {
+          'Current': 'rgba(0,86,179,0.2)',
+          '2050 Baseline': 'rgba(253,126,20,0.2)',
+          'Replant': 'rgba(23,162,184,0.2)',
+          'Urban': 'rgba(220,53,69,0.2)'
+        }
+      };
       
-      // Update charts and text
-      updateDistributionCharts(period);
-      
-      // Update text
-      document.getElementById('yearGroupTitle').textContent = period === '2yr' ? '2-Year' : '200-Year';
-      document.getElementById('yearGroupDesc').textContent = period === '2yr' ? '2-year' : '200-year';
-      
-      // Update insights
-      document.getElementById('insights2yr').style.display = period === '2yr' ? 'block' : 'none';
-      document.getElementById('insights200yr').style.display = period === '200yr' ? 'block' : 'none';
+      return {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.name),
+          datasets: data.map(d => {
+            return {
+              label: d.name,
+              data: [d.median],
+              backgroundColor: bgColors[eventType][d.name],
+              borderColor: colors[d.name],
+              borderWidth: 1
+            };
+          })
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              min: yRange[0],
+              max: yRange[1],
+              title: {
+                display: true,
+                text: 'Max Outflow (cms)'
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const d = data[context.dataIndex];
+                  return [
+                    `${d.name} - ${eventType}`,
+                    `Min: ${d.min.toFixed(4)} cms`,
+                    `Q1: ${d.q1.toFixed(4)} cms`,
+                    `Median: ${d.median.toFixed(4)} cms`,
+                    `Q3: ${d.q3.toFixed(4)} cms`,
+                    `Max: ${d.max.toFixed(4)} cms`,
+                    `Avg: ${d.avg.toFixed(4)} cms`
+                  ];
+                }
+              }
+            }
+          }
+        }
+      };
     }
     
     // Initialize charts
     document.addEventListener('DOMContentLoaded', function() {
+      // Initialize tabs
+      const tabLinks = document.querySelectorAll('.tab-link');
+      tabLinks.forEach(tab => {
+        tab.addEventListener('click', function() {
+          // Get the tab id
+          const tabId = this.id.replace('tab-', '');
+          
+          // Hide all tabs
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Show the selected tab
+          document.getElementById(tabId).classList.add('active');
+          
+          // Update active tab
+          document.querySelectorAll('.tab-link').forEach(t => {
+            t.classList.remove('active');
+          });
+          this.classList.add('active');
+        });
+      });
+      
+      // Initialize period buttons
+      document.getElementById('period-2yr').addEventListener('click', function() {
+        document.getElementById('period-2yr').classList.add('active');
+        document.getElementById('period-200yr').classList.remove('active');
+        document.getElementById('yearGroupTitle').textContent = '2-Year';
+        document.getElementById('yearGroupDesc').textContent = '2-year';
+        document.getElementById('insights2yr').style.display = 'block';
+        document.getElementById('insights200yr').style.display = 'none';
+        updateDistributionCharts('2yr');
+      });
+      
+      document.getElementById('period-200yr').addEventListener('click', function() {
+        document.getElementById('period-200yr').classList.add('active');
+        document.getElementById('period-2yr').classList.remove('active');
+        document.getElementById('yearGroupTitle').textContent = '200-Year';
+        document.getElementById('yearGroupDesc').textContent = '200-year';
+        document.getElementById('insights2yr').style.display = 'none';
+        document.getElementById('insights200yr').style.display = 'block';
+        updateDistributionCharts('200yr');
+      });
+      
       // Raw Outflow Chart
       const rawCtx = document.getElementById('rawChart').getContext('2d');
       new Chart(rawCtx, {
@@ -756,135 +880,6 @@
       // Initialize distribution charts with 2yr data
       updateDistributionCharts('2yr');
     });
-    
-    // Update distribution charts based on selected year group
-    function updateDistributionCharts(yearGroup) {
-      const areaDistributionData = generateAreaDistributionData(yearGroup);
-      const yRange = yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
-      
-      // Create bar charts for low and peak events
-      if (window.lowChart) window.lowChart.destroy();
-      if (window.peakChart) window.peakChart.destroy();
-      
-      const lowCtx = document.getElementById('lowChart').getContext('2d');
-      window.lowChart = new Chart(lowCtx, createBoxPlotConfig(areaDistributionData[0].data, yRange, 'Low'));
-      
-      const peakCtx = document.getElementById('peakChart').getContext('2d');
-      window.peakChart = new Chart(peakCtx, createBoxPlotConfig(areaDistributionData[1].data, yRange, 'Peak'));
-      
-      // Update statistics table
-      const tableBody = document.getElementById('statsTable').querySelector('tbody');
-      tableBody.innerHTML = '';
-      
-      // Add low data rows
-      areaDistributionData[0].data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>Low</td>
-          <td>${item.min.toFixed(3)}</td>
-          <td>${item.max.toFixed(3)}</td>
-          <td>${item.avg.toFixed(3)}</td>
-        `;
-        row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-        tableBody.appendChild(row);
-      });
-      
-      // Add peak data rows
-      areaDistributionData[1].data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>Peak</td>
-          <td>${item.min.toFixed(3)}</td>
-          <td>${item.max.toFixed(3)}</td>
-          <td>${item.avg.toFixed(3)}</td>
-        `;
-        row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
-        tableBody.appendChild(row);
-      });
-    }
-    
-    // Create box plot configuration
-    function createBoxPlotConfig(data, yRange, eventType) {
-      const colors = {
-        'Current': '#0056b3',
-        '2050 Baseline': '#fd7e14',
-        'Replant': '#17a2b8',
-        'Urban': '#dc3545'
-      };
-      
-      const bgColors = {
-        'Low': {
-          'Current': 'rgba(0,86,179,0.2)',
-          '2050 Baseline': 'rgba(253,126,20,0.2)',
-          'Replant': 'rgba(23,162,184,0.2)',
-          'Urban': 'rgba(220,53,69,0.2)'
-        },
-        'Peak': {
-          'Current': 'rgba(0,86,179,0.2)',
-          '2050 Baseline': 'rgba(253,126,20,0.2)',
-          'Replant': 'rgba(23,162,184,0.2)',
-          'Urban': 'rgba(220,53,69,0.2)'
-        }
-      };
-      
-      return {
-        type: 'bar',
-        data: {
-          labels: data.map(d => d.name),
-          datasets: data.map(d => {
-            return {
-              label: d.name,
-              data: [d.median],
-              backgroundColor: bgColors[eventType][d.name],
-              borderColor: colors[d.name],
-              borderWidth: 1,
-              // Add error bars for min/max
-              errorBars: {
-                label: d.name,
-                type: 'line',
-                yMin: d.min,
-                yMax: d.max,
-                color: colors[d.name]
-              }
-            };
-          })
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              min: yRange[0],
-              max: yRange[1],
-              title: {
-                display: true,
-                text: 'Max Outflow (cms)'
-              }
-            }
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const d = data[context.dataIndex];
-                  return [
-                    `${d.name} - ${eventType}`,
-                    `Min: ${d.min.toFixed(4)} cms`,
-                    `Q1: ${d.q1.toFixed(4)} cms`,
-                    `Median: ${d.median.toFixed(4)} cms`,
-                    `Q3: ${d.q3.toFixed(4)} cms`,
-                    `Max: ${d.max.toFixed(4)} cms`,
-                    `Avg: ${d.avg.toFixed(4)} cms`
-                  ];
-                }
-              }
-            }
-          }
-        }
-      };
-    }
   </script>
 </body>
 </html>
