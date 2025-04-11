@@ -547,12 +547,28 @@
                 if (tabId !== 'trends' && trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; console.log("Destroyed Trend Chart instance."); }
 
                 // Initialize/Mount based on the NOW ACTIVE tab
+                // Get the specific canvas element for the newly activated tab
                 if (tabId === 'raw') {
-                    initializeRawChart();
+                    const canvasElement = document.getElementById('rawChart');
+                    if (canvasElement) {
+                        initializeRawChart();
+                    } else {
+                        console.warn("Canvas element 'rawChart' not found after tab activation.");
+                    }
                 } else if (tabId === 'percentage') {
-                    initializePercentageChart();
+                    const canvasElement = document.getElementById('percentageChart');
+                    if (canvasElement) {
+                        initializePercentageChart();
+                    } else {
+                        console.warn("Canvas element 'percentageChart' not found after tab activation.");
+                    }
                 } else if (tabId === 'trends') {
-                    initializeTrendChart();
+                    const canvasElement = document.getElementById('trendChart');
+                    if (canvasElement) {
+                        initializeTrendChart();
+                    } else {
+                        console.warn("Canvas element 'trendChart' not found after tab activation.");
+                    }
                 } else if (tabId === 'distribution') {
                     // Mount React component only if not already mounted
                     if (!reactComponentMounted) {
@@ -585,7 +601,12 @@
              // Add a slightly longer delay for initial load
              setTimeout(() => {
                 console.log("Attempting initial Raw Chart initialization after delay.");
-                initializeRawChart(); // This function now checks for data availability
+                const canvasElement = document.getElementById('rawChart');
+                if (canvasElement) {
+                    initializeRawChart(); // This function now checks for data availability
+                } else {
+                    console.warn("Canvas element 'rawChart' not found during initial load.");
+                }
              }, 150); // Delay to ensure canvas is rendered
         } else {
             console.log("Initial load: Raw tab is not the default active tab.");
@@ -602,13 +623,12 @@
     function initializeRawChart() {
         console.log("Attempting to initialize Raw Chart...");
         const canvasElement = document.getElementById('rawChart');
-        // Ensure the container is visible (tab is active)
-        const container = document.getElementById('raw');
-        if (!canvasElement || !container || !container.classList.contains('active')) {
-             console.warn("initializeRawChart: Canvas element 'rawChart' not found or its tab is not active.");
-             if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; } // Clean up if switching away fast
+        if (!canvasElement) {
+             console.warn("initializeRawChart: Canvas element 'rawChart' not found.");
+             if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; } // Clean up if instance exists but canvas doesn't
              return;
         }
+        
         // Check if an instance already exists for this canvas
         if (rawChartInstance && rawChartInstance.canvas === canvasElement) {
             console.log("Raw Chart instance already exists for this canvas.");
@@ -617,7 +637,6 @@
         // Destroy any old instance before creating a new one
         if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; }
 
-        console.log("initializeRawChart: Canvas element found and tab is active.");
         const rawCtx = canvasElement.getContext('2d');
         if (!rawCtx) {
             console.warn("initializeRawChart: Failed to get 2D context from canvas.");
@@ -680,9 +699,8 @@
     function initializePercentageChart() {
         console.log("Attempting to initialize Percentage Chart...");
         const canvasElement = document.getElementById('percentageChart');
-        const container = document.getElementById('percentage');
-         if (!canvasElement || !container || !container.classList.contains('active')) {
-            console.warn("initializePercentageChart: Canvas element 'percentageChart' not found or its tab is not active.");
+         if (!canvasElement) {
+            console.warn("initializePercentageChart: Canvas element 'percentageChart' not found.");
              if (percentageChartInstance) { percentageChartInstance.destroy(); percentageChartInstance = null; }
             return; 
         }
@@ -692,7 +710,6 @@
         }
         if (percentageChartInstance) { percentageChartInstance.destroy(); percentageChartInstance = null; }
 
-        console.log("initializePercentageChart: Canvas element found and tab is active.");
         const percentageCtx = canvasElement.getContext('2d');
         if (!percentageCtx) {
             console.warn("initializePercentageChart: Failed to get 2D context.");
@@ -761,9 +778,8 @@
     function initializeTrendChart() {
         console.log("Attempting to initialize Trend Chart...");
         const canvasElement = document.getElementById('trendChart');
-        const container = document.getElementById('trends');
-        if (!canvasElement || !container || !container.classList.contains('active')) {
-            console.warn("initializeTrendChart: Canvas element 'trendChart' not found or its tab is not active.");
+        if (!canvasElement) {
+            console.warn("initializeTrendChart: Canvas element 'trendChart' not found.");
              if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
             return;
         }
@@ -773,7 +789,6 @@
         }
         if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
 
-        console.log("initializeTrendChart: Canvas element found and tab is active.");
         const trendCtx = canvasElement.getContext('2d');
          if (!trendCtx) {
             console.warn("initializeTrendChart: Failed to get 2D context.");
