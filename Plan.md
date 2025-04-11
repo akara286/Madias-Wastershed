@@ -1,16 +1,15 @@
 <Plan>
-Focus on visual and aesthetic improvements for the water dashboard including:
-1. Enhanced color scheme with modern blue gradient
-2. Improved chart styling with consistent colors and better tooltips
-3. Modern card design with subtle shadows and rounded corners
-4. Smooth animations for tab transitions and chart rendering
-5. Improved typography for better readability
-6. Loading animation enhancements
+Create a visually enhanced dashboard by:
+1. Incorporating descriptive text from max_outflow_dashboard_final_fixed.html
+2. Improving typography and spacing
+3. Adding modern visual elements like gradients, shadows, and animations
+4. Enhancing chart containers and styling
+5. Improving tab design with better transitions
 </Plan>
 
 <file path="/Users/alikara/Desktop/508 website/index.html" action="modify">
   <change>
-    <description>Enhance header and overall styling with modern gradient and improved typography</description>
+    <description>Add CSS variables for consistent color scheme and enhance overall styling</description>
     <search>
 ===
   <style>
@@ -21,7 +20,49 @@ Focus on visual and aesthetic improvements for the water dashboard including:
       background-color: #f8f9fa;
       color: #333;
     }
+===
+    </search>
+    <content>
+===
+  <style>
+    /* Define CSS variables for consistent theming */
+    :root {
+      --primary-color: #0056b3;          /* Blue (Current scenario) */
+      --secondary-color: #17a2b8;        /* Teal (Replant scenario) */
+      --accent-color-orange: #fd7e14;    /* Orange (Baseline scenario) */
+      --accent-color-red: #dc3545;       /* Red (Urban scenario) */
+      --background: #f5f7fa;
+      --card-bg: #ffffff;
+      --text-color: #343a40;
+      --text-secondary: #6c757d;
+      --border-light: rgba(0,0,0,0.08);
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 15px rgba(0,0,0,0.07);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+      --transition-fast: 0.2s ease;
+      --transition-medium: 0.3s ease;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 15px;
+    }
     
+    /* Base styles */
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: var(--background);
+      color: var(--text-color);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Enhance header styling with modern gradient and pattern</description>
+    <search>
+===
     .header {
       background: linear-gradient(to right, #0d47a1, #1976d2);
       color: white;
@@ -32,22 +73,12 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     </search>
     <content>
 ===
-  <style>
-    /* Keep existing styles for overall layout and non-React tabs */
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background-color: #f5f7fa;
-      color: #333;
-      line-height: 1.6;
-    }
-    
     .header {
       background: linear-gradient(135deg, #0d47a1, #1976d2, #2196f3);
       color: white;
-      padding: 2.5rem 1rem;
+      padding: 3rem 1rem;
       text-align: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow-md);
       position: relative;
       overflow: hidden;
     }
@@ -59,29 +90,31 @@ Focus on visual and aesthetic improvements for the water dashboard including:
       left: 0;
       right: 0;
       bottom: 0;
-      background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
-      opacity: 0.2;
+      background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+      opacity: 0.3;
     }
     
     .header h1 {
       margin-bottom: 0.5rem;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: -0.5px;
-      font-size: 2.4rem;
+      font-size: 2.6rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     .header p {
-      max-width: 700px;
+      max-width: 800px;
       margin: 0 auto;
       opacity: 0.9;
-      font-size: 1.1rem;
+      font-size: 1.15rem;
+      font-weight: 300;
     }
 ===
     </content>
   </change>
   
   <change>
-    <description>Enhance tab styling for more modern look with animations</description>
+    <description>Enhance container styling</description>
     <search>
 ===
     .container {
@@ -89,7 +122,26 @@ Focus on visual and aesthetic improvements for the water dashboard including:
       margin: 0 auto;
       padding: 2rem 1rem;
     }
-    
+===
+    </search>
+    <content>
+===
+    .container {
+      max-width: 1200px;
+      margin: 2.5rem auto;
+      padding: 2.5rem;
+      background-color: var(--card-bg);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+    }
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Improve tab links styling</description>
+    <search>
+===
     .tab-links {
       display: flex;
       flex-wrap: wrap;
@@ -125,51 +177,47 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     </search>
     <content>
 ===
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2.5rem 1.5rem;
-    }
-    
     .tab-links {
       display: flex;
       flex-wrap: wrap;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
+      border-bottom: 1px solid var(--border-light);
       margin-bottom: 2.5rem;
-      padding-bottom: 3px;
+      padding-bottom: 0.25rem;
+      gap: 0.25rem;
     }
     
     .tab-link {
-      padding: 0.8rem 1.2rem;
+      padding: 0.875rem 1.25rem;
       cursor: pointer;
       background-color: transparent;
       border: none;
-      border-radius: 8px 8px 0 0;
-      margin-right: 0.75rem;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      margin-right: 0.5rem;
       margin-bottom: -1px; /* Overlap border */
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      transition: all var(--transition-medium);
       position: relative;
+      color: var(--text-secondary);
+      font-size: 1rem;
       font-weight: 500;
-      color: #6c757d;
-      font-size: 0.95rem;
+      user-select: none;
     }
     
     .tab-link.active {
-      background-color: rgba(25, 118, 210, 0.04);
-      color: #1976d2;
+      background-color: rgba(25, 118, 210, 0.05);
+      color: var(--primary-color);
       font-weight: 600;
     }
     
     .tab-link.active::after {
       content: '';
       position: absolute;
-      bottom: -3px;
+      bottom: -1px;
       left: 0;
       width: 100%;
       height: 3px;
-      background: linear-gradient(90deg, #1976d2, #42a5f5);
+      background: linear-gradient(90deg, var(--primary-color), #42a5f5);
       border-radius: 3px 3px 0 0;
-      animation: slideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      animation: slideIn 0.3s ease-out;
     }
     
     @keyframes slideIn {
@@ -179,14 +227,14 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     
     .tab-link:hover:not(.active) {
       background-color: rgba(0,0,0,0.03);
-      color: #495057;
+      color: var(--text-color);
     }
 ===
     </content>
   </change>
   
   <change>
-    <description>Improve tab content styling with modern card design</description>
+    <description>Enhance tab content styling</description>
     <search>
 ===
     .tab-content {
@@ -209,14 +257,14 @@ Focus on visual and aesthetic improvements for the water dashboard including:
 ===
     .tab-content {
       display: none;
-      background-color: white;
+      background-color: var(--card-bg);
       padding: 2.5rem;
-      border-radius: 12px;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.05);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
       margin-bottom: 2.5rem;
       opacity: 0;
       transform: translateY(10px);
-      transition: all 0.4s ease-out;
+      transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     }
     
     .tab-content.active {
@@ -224,12 +272,56 @@ Focus on visual and aesthetic improvements for the water dashboard including:
       opacity: 1;
       transform: translateY(0);
     }
+    
+    .tab-content h2 {
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--border-light);
+      padding-bottom: 0.75rem;
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 1.75rem;
+      font-weight: 600;
+    }
 ===
     </content>
   </change>
   
   <change>
-    <description>Enhance info boxes and cards with better styling</description>
+    <description>Enhance chart container styling</description>
+    <search>
+===
+    .chart-container {
+      position: relative; /* Needed for Chart.js responsiveness */
+      height: 400px;
+      width: 100%;
+      margin-bottom: 2rem;
+    }
+===
+    </search>
+    <content>
+===
+    .chart-container {
+      position: relative; /* Needed for Chart.js responsiveness */
+      height: 400px;
+      width: 100%;
+      margin-bottom: 2rem;
+      background-color: var(--card-bg);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      padding: 1.5rem;
+      border: 1px solid var(--border-light);
+      transition: box-shadow var(--transition-medium);
+    }
+    
+    .chart-container:hover {
+      box-shadow: var(--shadow-md);
+    }
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Add info box styling</description>
     <search>
 ===
     .info-box {
@@ -239,15 +331,67 @@ Focus on visual and aesthetic improvements for the water dashboard including:
       border-radius: 4px;
       margin-bottom: 1.5rem;
     }
-    
-    .footer {
-      background-color: #343a40;
-      color: #adb5bd;
-      padding: 1.5rem 1rem;
-      text-align: center;
-      margin-top: 2rem;
+===
+    </search>
+    <content>
+===
+    .info-box {
+      background-color: rgba(33, 150, 243, 0.05);
+      padding: 1.25rem;
+      border-left: 4px solid var(--primary-color);
+      border-radius: var(--radius-sm);
+      margin-bottom: 1.75rem;
+      box-shadow: var(--shadow-sm);
+      transition: all var(--transition-medium);
     }
     
+    .info-box:hover {
+      background-color: rgba(33, 150, 243, 0.08);
+      box-shadow: 0 3px 12px rgba(0,0,0,0.05);
+    }
+    
+    /* Plot description styling (from 2nd file) */
+    .plot-description {
+      font-size: 1em;
+      color: #495057;
+      margin-bottom: 1.5rem;
+      background-color: #eef2f7;
+      padding: 1.25rem;
+      border-radius: var(--radius-sm);
+      border-left: 5px solid var(--primary-color);
+    }
+    
+    .plot-description ul {
+      margin-top: 0.75rem;
+      margin-bottom: 0.5rem;
+      padding-left: 1.5rem;
+    }
+    
+    .plot-description li {
+      margin-bottom: 0.5rem;
+    }
+    
+    /* Data source note styling (from 2nd file) */
+    .data-source-note {
+      font-size: 0.9em;
+      color: var(--text-secondary);
+      margin-top: -0.5rem;
+      margin-bottom: 1.5rem;
+      font-style: italic;
+      font-weight: 500;
+      background-color: #fffadf;
+      padding: 0.3rem 0.75rem;
+      border-radius: 3px;
+      display: inline-block;
+    }
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Enhance typography and card styling</description>
+    <search>
+===
     .grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -269,34 +413,10 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     </search>
     <content>
 ===
-    .info-box {
-      background-color: rgba(33, 150, 243, 0.05);
-      padding: 1.25rem;
-      border-left: 4px solid #2196f3;
-      border-radius: 8px;
-      margin-bottom: 1.8rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-      transition: all 0.3s ease;
-    }
-    
-    .info-box:hover {
-      background-color: rgba(33, 150, 243, 0.08);
-      box-shadow: 0 3px 12px rgba(0,0,0,0.05);
-    }
-    
-    .footer {
-      background: linear-gradient(to right, #111827, #1f2937);
-      color: #cbd5e1;
-      padding: 2.5rem 1rem;
-      text-align: center;
-      margin-top: 3rem;
-      box-shadow: 0 -1px 5px rgba(0,0,0,0.05);
-    }
-    
     .grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 1.8rem;
+      gap: 1.75rem;
     }
     
     @media (min-width: 768px) {
@@ -306,23 +426,32 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     }
     
     .card {
-      background-color: #ffffff;
-      padding: 1.8rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      background-color: var(--card-bg);
+      padding: 1.75rem;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      transition: transform var(--transition-medium), box-shadow var(--transition-medium);
+      border: 1px solid var(--border-light);
     }
     
     .card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-md);
+    }
+    
+    /* Section divider from 2nd file */
+    .section-divider {
+      border: 0;
+      height: 1px;
+      background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,0.1), rgba(0,0,0,0));
+      margin: 3rem 0;
     }
 ===
     </content>
   </change>
   
   <change>
-    <description>Enhance typography and headings</description>
+    <description>Enhance table styling</description>
     <search>
 ===
     table {
@@ -339,16 +468,6 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     table th {
       background-color: #f1f1f1;
     }
-    
-    h1, h2, h3 {
-      margin-top: 0;
-    }
-        
-    .subtitle {
-      font-style: italic;
-      color: #6c757d;
-      margin-bottom: 1.5rem;
-    }
 ===
     </search>
     <content>
@@ -356,275 +475,195 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     table {
       width: 100%;
       border-collapse: collapse;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.5rem;
     }
     
     table th, table td {
       padding: 0.75rem 1rem;
       text-align: left;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
+      border-bottom: 1px solid var(--border-light);
     }
     
     table th {
       background: linear-gradient(to bottom, #f8f9fa, #f1f3f5);
       font-weight: 600;
-      color: #495057;
-      position: relative;
+      color: var(--text-color);
     }
     
     table tbody tr:hover {
-      background-color: rgba(0,0,0,0.01);
+      background-color: rgba(0,0,0,0.02);
     }
     
-    h1, h2, h3 {
-      margin-top: 0;
-      color: #1a202c;
-      letter-spacing: -0.3px;
-    }
-    
-    h2 {
-      font-size: 1.75rem;
-      margin-bottom: 0.6rem;
-      font-weight: 600;
-    }
-    
-    h3 {
-      font-size: 1.35rem;
-      margin-bottom: 1rem;
-      font-weight: 600;
-      color: #2d3748;
-    }
-        
-    .subtitle {
-      font-style: italic;
-      color: #6c757d;
-      margin-bottom: 1.8rem;
-      font-size: 1.05rem;
-      opacity: 0.85;
-      border-bottom: 1px dashed rgba(0,0,0,0.08);
-      padding-bottom: 0.8rem;
+    table tbody tr:last-child td {
+      border-bottom: none;
     }
 ===
     </content>
   </change>
   
   <change>
-    <description>Add beautiful loading animation</description>
+    <description>Enhance footer styling</description>
     <search>
 ===
-          loadingDiv.style.zIndex = '10';
-          loadingDiv.innerHTML = '<p>Loading data from Excel...</p>';
+    .footer {
+      background-color: #343a40;
+      color: #adb5bd;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      margin-top: 2rem;
+    }
 ===
     </search>
     <content>
 ===
-          loadingDiv.style.zIndex = '10';
-          loadingDiv.innerHTML = `
-            <div style="text-align:center;">
-              <div class="wave-loader" style="margin-bottom:15px;">
-                <div></div><div></div><div></div><div></div><div></div>
-              </div>
-              <p>Loading data from Excel...</p>
-            </div>
-          `;
-          
-          // Add wave loader animation
-          if (!document.getElementById('wave-loader-style')) {
-            const style = document.createElement('style');
-            style.id = 'wave-loader-style';
-            style.textContent = `
-              .wave-loader {
-                display: flex;
-                justify-content: center;
-                align-items: flex-end;
-                height: 40px;
-              }
-              .wave-loader > div {
-                background-color: #2196f3;
-                height: 100%;
-                width: 5px;
-                margin: 0 2px;
-                border-radius: 3px;
-                animation: wave 1.2s infinite ease-in-out;
-              }
-              .wave-loader > div:nth-child(2) { animation-delay: -1.1s; }
-              .wave-loader > div:nth-child(3) { animation-delay: -1.0s; }
-              .wave-loader > div:nth-child(4) { animation-delay: -0.9s; }
-              .wave-loader > div:nth-child(5) { animation-delay: -0.8s; }
-              @keyframes wave {
-                0%, 40%, 100% { transform: scaleY(0.3); }
-                20% { transform: scaleY(1); }
-              }
-            `;
-            document.head.appendChild(style);
-          }
-===
-    </content>
-  </change>
-  
-  <change>
-    <description>Improve chart styling for better visuals</description>
-    <search>
-===
-    function initializeRawChart(canvasElement) {
-        console.log("Attempting to initialize Raw Chart...");
-        // Canvas element is now passed as an argument
-        if (!canvasElement) {
-             console.warn("initializeRawChart: Received null canvas element.");
-             if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; }
-             return;
-        }
-===
-    </search>
-    <content>
-===
-    // Add global chart styling for consistent visuals
-    Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
-    Chart.defaults.font.size = 12;
-    Chart.defaults.color = '#495057';
-    Chart.defaults.elements.line.tension = 0.2;
-    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(255, 255, 255, 0.95)';
-    Chart.defaults.plugins.tooltip.titleColor = '#1a202c';
-    Chart.defaults.plugins.tooltip.bodyColor = '#4a5568';
-    Chart.defaults.plugins.tooltip.borderColor = 'rgba(0, 0, 0, 0.1)';
-    Chart.defaults.plugins.tooltip.borderWidth = 1;
-    Chart.defaults.plugins.tooltip.padding = 10;
-    Chart.defaults.plugins.tooltip.cornerRadius = 8;
-    Chart.defaults.plugins.tooltip.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-    Chart.defaults.plugins.tooltip.boxPadding = 6;
-    Chart.defaults.elements.point.radius = 4;
-    Chart.defaults.elements.point.hoverRadius = 6;
+    .footer {
+      background: linear-gradient(to right, #111827, #1f2937);
+      color: #cbd5e1;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      margin-top: 3rem;
+      box-shadow: 0 -1px 5px rgba(0,0,0,0.05);
+    }
     
-    function initializeRawChart(canvasElement) {
-        console.log("Attempting to initialize Raw Chart...");
-        // Canvas element is now passed as an argument
-        if (!canvasElement) {
-             console.warn("initializeRawChart: Received null canvas element.");
-             if (rawChartInstance) { rawChartInstance.destroy(); rawChartInstance = null; }
-             return;
-        }
+    .footer p {
+      max-width: 600px;
+      margin: 0 auto;
+      opacity: 0.9;
+    }
 ===
     </content>
   </change>
   
   <change>
-    <description>Update chart options with modern styling</description>
+    <description>Add animation for loading spinner</description>
     <search>
 ===
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    scales: { 
-                        y: { 
-                            beginAtZero: true, 
-                            title: { display: true, text: 'Average Max Outflow (cms)' } 
-                        },
-                        x: {
-                            ticks: {
-                                autoSkip: false, // Prevent labels from being skipped
-                                maxRotation: 45, // Rotate labels if needed
-                                minRotation: 30
-                            }
-                        }
-                    }, 
-                    plugins: { 
-                        tooltip: { 
-                            callbacks: { 
-                                label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(3)} cms`; } 
-                            } 
-                        } 
-                    } 
-                }
+    /* Recharts tooltip is on top */
+    .recharts-tooltip-wrapper {
+      z-index: 1000 !important; /* Ensure tooltip is on top */
+    }
 ===
     </search>
     <content>
 ===
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 1500,
-                        easing: 'easeOutQuart'
-                    },
-                    scales: { 
-                        y: { 
-                            beginAtZero: true, 
-                            title: { 
-                                display: true, 
-                                text: 'Average Max Outflow (cms)',
-                                font: {
-                                    weight: '600',
-                                    size: 13
-                                },
-                                padding: {bottom: 10}
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.04)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                padding: 8
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                autoSkip: false, // Prevent labels from being skipped
-                                maxRotation: 45, // Rotate labels if needed
-                                minRotation: 30,
-                                padding: 10
-                            },
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }, 
-                    plugins: { 
-                        tooltip: { 
-                            callbacks: { 
-                                label: function(context) { return `${context.dataset.label}: ${context.raw.toFixed(3)} cms`; } 
-                            },
-                            displayColors: true,
-                            boxWidth: 8,
-                            boxHeight: 8,
-                            usePointStyle: true,
-                            caretPadding: 5,
-                            titleMarginBottom: 8
-                        },
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                            }
-                        }
-                    } 
-                }
+    /* Recharts tooltip is on top */
+    .recharts-tooltip-wrapper {
+      z-index: 1000 !important; /* Ensure tooltip is on top */
+    }
+    
+    /* Loading spinner animation */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 0.25rem solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      border-top-color: var(--primary-color);
+      animation: spin 1s linear infinite;
+      margin: 0.5rem auto;
+    }
+    
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: rgba(255,255,255,0.9);
+      border-radius: var(--radius-sm);
+      z-index: 10;
+    }
+    
+    /* Animation controls for animated chart (from 2nd file) */
+    .animation-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background-color: #f1f3f5;
+      border-radius: var(--radius-sm);
+      margin-top: 1rem;
+      border: 1px solid var(--border-light);
+      gap: 0.75rem;
+    }
+    
+    .animation-controls button {
+      padding: 0.5rem 1rem;
+      font-size: 0.95rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid #dee2e6;
+      background-color: var(--card-bg);
+      color: var(--primary-color);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-weight: 500;
+    }
+    
+    .animation-controls button:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .animation-controls button.active {
+      background-color: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
 ===
     </content>
   </change>
   
   <change>
-    <description>Add subtle scroll to top button for better navigation</description>
+    <description>Improve introduction text and add scrolling button</description>
     <search>
 ===
-  <script>
-    // Initialize data containers - will be filled from Excel
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <h1>Max Outflow Uncertainty Dashboard</h1>
+      <p>
+        Interactive analysis of climate scenarios (2050 baseline, Urban development, Replanting efforts)
+        and their impact on maximum water outflow across different rainfall event severities.
+      </p>
+    </div>
+  </header>
 ===
     </search>
     <content>
 ===
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <h1>Max Outflow Uncertainty Dashboard</h1>
+      <p>
+        This dashboard visualizes how future climate and land-use scenarios could affect peak water outflow compared to today. 
+        It compares current conditions to projections for the year 2050 under different scenarios (baseline climate, increased urban development, and replanting of vegetation) 
+        across both moderate and extreme rainfall events.
+      </p>
+    </div>
+  </header>
+  
   <!-- Scroll to top button -->
-  <button id="scrollTopBtn" style="position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #1976d2, #42a5f5); color: white; border: none; box-shadow: 0 3px 10px rgba(0,0,0,0.2); cursor: pointer; display: none; z-index: 1000; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;">
+  <button id="scrollTopBtn" style="position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), #42a5f5); color: white; border: none; box-shadow: 0 3px 10px rgba(0,0,0,0.2); cursor: pointer; display: none; z-index: 1000; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 19V5M5 12l7-7 7 7"/>
     </svg>
   </button>
-  
-  <script>
-    // Initialize data containers - will be filled from Excel
 ===
     </content>
   </change>
@@ -671,6 +710,206 @@ Focus on visual and aesthetic improvements for the water dashboard including:
     });
     
   </script>
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Add plot descriptions to the raw outflow tab</description>
+    <search>
+===
+    <!-- Raw Outflow Tab (Chart.js) -->
+    <div id="raw" class="tab-content active">
+      <h2>Raw Max Outflow Comparison</h2>
+      <p class="subtitle">Average values across 100 samples for each return period</p>
+      
+      <div class="info-box">
+        <p>
+          This chart compares the average maximum outflow values (in cms) across all scenarios and return periods. 
+          Higher values indicate increased water flow volume during rainfall events.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="rawChart"></canvas>
+      </div>
+    </div>
+===
+    </search>
+    <content>
+===
+    <!-- Raw Outflow Tab (Chart.js) -->
+    <div id="raw" class="tab-content active">
+      <h2>Raw Max Outflow Comparison</h2>
+      <p class="subtitle">Average values across 100 samples for each return period</p>
+      
+      <div class="plot-description">
+        The bar chart below shows the projected <b>maximum outflow</b> (peak water flow rate, in cubic meters per second) for two types of storm events 
+        under several scenarios:
+        <ul>
+          <li><b>Current (2020):</b> Current climate and land-use conditions.</li>
+          <li><b>2050 Baseline:</b> Year 2050 climate under baseline conditions (no special intervention).</li>
+          <li><b>Urban Development:</b> 2050 scenario with significant urban growth (more paved surfaces, increasing runoff).</li>
+          <li><b>Replanting:</b> 2050 scenario with reforestation/revegetation efforts (more permeable land, reducing runoff).</li>
+        </ul>
+        Each scenario is evaluated for a relatively frequent <b>2-year storm</b> and a rare <b>200-year storm</b>, 
+        under both a <i>low-impact</i> climate case and a <i>high-impact</i> (peak climate change) case.
+      </div>
+      
+      <p class="data-source-note">Source: Summary values representing multiple return periods</p>
+      
+      <div class="chart-container">
+        <canvas id="rawChart"></canvas>
+      </div>
+    </div>
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Add plot descriptions to the percentage tab</description>
+    <search>
+===
+    <!-- Percentage Change Tab (Chart.js) -->
+    <div id="percentage" class="tab-content">
+      <h2>Percentage Change from 2050 Baseline</h2>
+      <p class="subtitle">Calculated from average values across 100 samples</p>
+      
+      <div class="info-box">
+        <p>
+          This chart shows how the Urban and Replant scenarios compare to the 2050 Baseline in percentage terms, based on average outflow.
+          Negative values indicate reduced outflow compared to the baseline scenario.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="percentageChart"></canvas>
+      </div>
+    </div>
+===
+    </search>
+    <content>
+===
+    <!-- Percentage Change Tab (Chart.js) -->
+    <div id="percentage" class="tab-content">
+      <h2>Percentage Change from 2050 Baseline</h2>
+      <p class="subtitle">Calculated from average values across 100 samples</p>
+      
+      <div class="plot-description">
+        This chart shows how the <b>Urban</b> and <b>Replanting</b> scenarios differ from the 2050 Baseline in terms of peak outflow, for each event type. 
+        The values are percentages relative to the baseline scenario (the baseline is zero reference). 
+        Positive percentages (red bars) indicate higher outflow than the baseline, while negative percentages (teal bars) indicate lower outflow. 
+        You can see that the Urban development scenario results in a slight increase in peak flows, whereas the Replanting scenario leads to a few percent reduction in flows. 
+        The effect of replanting is most pronounced for the smaller 2-year storm and diminishes for the 200-year event.
+      </div>
+      
+      <p class="data-source-note">Source: Calculated from summary values representing multiple return periods</p>
+      
+      <div class="chart-container">
+        <canvas id="percentageChart"></canvas>
+      </div>
+    </div>
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Add plot descriptions to the trends tab</description>
+    <search>
+===
+    <!-- Trend Analysis Tab (Chart.js) -->
+    <div id="trends" class="tab-content">
+      <h2>Trend Analysis: Scenario Changes Across Events</h2>
+      <p class="subtitle">Showing percentage change from current conditions (based on averages)</p>
+      
+      <div class="info-box">
+        <p>
+          This visualization shows how the impact of different scenarios changes across rainfall event severities, using average values.
+          The chart displays percentage changes relative to current conditions, highlighting how climate change and land use 
+          strategies affect water outflows differently across event scales.
+        </p>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+      </div>
+===
+    </search>
+    <content>
+===
+    <!-- Trend Analysis Tab (Chart.js) -->
+    <div id="trends" class="tab-content">
+      <h2>Trend Analysis: Scenario Changes Across Events</h2>
+      <p class="subtitle">Showing percentage change from current conditions (based on averages)</p>
+      
+      <div class="plot-description">
+        This visualization shows how the impact of different scenarios changes across rainfall event severities, using average values.
+        The chart displays percentage changes relative to current conditions, highlighting how climate change and land use 
+        strategies affect water outflows differently across event scales. For more extreme events (like the 200-year storm), 
+        the differences between scenarios are smaller, whereas for the 2-year storm, replanting yields a larger relative 
+        reduction in outflow and urbanization shows a slight increase.
+      </div>
+      
+      <p class="data-source-note">Source: Calculated from summary values representing multiple return periods</p>
+      
+      <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+      </div>
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Add plot descriptions to the distribution tab</description>
+    <search>
+===
+    <!-- Distribution Analysis Tab (React/Recharts) -->
+    <div id="distribution" class="tab-content">
+      <!-- React component will render here -->
+      <div id="distributionReactRoot"></div> 
+    </div>
+===
+    </search>
+    <content>
+===
+    <!-- Distribution Analysis Tab (React/Recharts) -->
+    <div id="distribution" class="tab-content">
+      <h2>Distribution Analysis</h2>
+      <p class="subtitle">Statistical distribution across 100 samples</p>
+      
+      <div class="plot-description">
+        This visualization illustrates the <b>uncertainty</b> in the model simulations for different scenarios. 
+        Each scenario (Current, 2050 Baseline, Urban, Replant) shows results from 100 simulation runs. 
+        The charts display the statistical distribution (min, max, quartiles, median, average) of outflow values 
+        for both low and peak events, helping to understand not just the average effects but the range of 
+        possible outcomes under different climate and land-use scenarios.
+      </div>
+      
+      <p class="data-source-note">Source: Full 100 samples from the uncertainty model runs</p>
+      
+      <!-- React component will render here -->
+      <div id="distributionReactRoot"></div> 
+    </div>
+===
+    </content>
+  </change>
+  
+  <change>
+    <description>Add section dividers between tabs for better visual separation</description>
+    <search>
+===
+      <div class="grid" style="margin-top: 2rem;">
+        <div class="card">
+          <h3>Key Observations (Based on Averages)</h3>
+===
+    </search>
+    <content>
+===
+      <hr class="section-divider">
+      
+      <div class="grid" style="margin-top: 2rem;">
+        <div class="card">
+          <h3>Key Observations (Based on Averages)</h3>
 ===
     </content>
   </change>
