@@ -310,7 +310,29 @@
       try {
         // Show loading indicators
         document.querySelectorAll('.chart-container').forEach(container => {
-          container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><p>Loading data from Excel...</p></div>';
+          // Store the original content
+          const originalContent = container.innerHTML;
+          // Create a loading overlay that preserves the original content
+          const loadingDiv = document.createElement('div');
+          loadingDiv.className = 'loading-overlay';
+          loadingDiv.style.position = 'absolute';
+          loadingDiv.style.top = '0';
+          loadingDiv.style.left = '0';
+          loadingDiv.style.width = '100%';
+          loadingDiv.style.height = '100%';
+          loadingDiv.style.display = 'flex';
+          loadingDiv.style.justifyContent = 'center';
+          loadingDiv.style.alignItems = 'center';
+          loadingDiv.style.backgroundColor = 'rgba(255,255,255,0.8)';
+          loadingDiv.style.zIndex = '10';
+          loadingDiv.innerHTML = '<p>Loading data from Excel...</p>';
+          
+          // Ensure the container has position relative for absolute positioning
+          if (window.getComputedStyle(container).position === 'static') {
+            container.style.position = 'relative';
+          }
+          
+          container.appendChild(loadingDiv);
         });
         
         const response = await fetch('uncertainty.xlsx');
@@ -480,14 +502,39 @@
           trendData: window.trendData
         });
         
+        // Remove loading overlays
+        document.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+        
         console.log("Excel data loading and processing finished successfully.");
         
       } catch (error) {
         console.error("Error loading or processing Excel data:", error);
         document.querySelectorAll('.chart-container').forEach(container => {
-          container.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;height:100%;color:red;">
-            <p>Error loading data: ${error.message}. Please check console for details.</p>
-          </div>`;
+          // Remove any existing loading overlays
+          container.querySelectorAll('.loading-overlay').forEach(overlay => overlay.remove());
+          
+          // Create an error overlay
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'error-overlay';
+          errorDiv.style.position = 'absolute';
+          errorDiv.style.top = '0';
+          errorDiv.style.left = '0';
+          errorDiv.style.width = '100%';
+          errorDiv.style.height = '100%';
+          errorDiv.style.display = 'flex';
+          errorDiv.style.justifyContent = 'center';
+          errorDiv.style.alignItems = 'center';
+          errorDiv.style.backgroundColor = 'rgba(255,255,255,0.9)';
+          errorDiv.style.color = 'red';
+          errorDiv.style.zIndex = '10';
+          errorDiv.innerHTML = `<p>Error loading data: ${error.message}. Please check console for details.</p>`;
+          
+          // Ensure the container has position relative for absolute positioning
+          if (window.getComputedStyle(container).position === 'static') {
+            container.style.position = 'relative';
+          }
+          
+          container.appendChild(errorDiv);
         });
         
         // Ensure data variables are empty arrays if loading fails
@@ -596,7 +643,7 @@
                          console.log("DistributionAnalysisComponent already mounted.");
                     }
                 }
-            }, 50); // Small delay ensures DOM is updated and visible
+            }, 150); // Increased delay ensures DOM is fully updated and visible
           });
         });
         
@@ -616,7 +663,7 @@
                     } else {
                         console.warn("Canvas element 'rawChart' not found during initial load within the active tab.");
                     }
-                 }, 150); // Delay to ensure canvas is rendered
+                 }, 250); // Increased delay to ensure canvas is fully rendered
             } else {
                 console.log(`Initial load: Default active tab is '${initialTabId}', not 'raw'.`);
             }
