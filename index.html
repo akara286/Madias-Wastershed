@@ -165,6 +165,35 @@
       color: #6c757d;
       margin-bottom: 1.5rem;
     }
+    
+    .box-plot-line {
+      position: absolute;
+      border-left: 2px solid rgba(0,0,0,0.2);
+      height: 10px;
+    }
+    
+    /* Distribution indicator */
+    .dist-indicator {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .dist-item {
+      display: flex;
+      align-items: center;
+      margin-right: 20px;
+      margin-bottom: 10px;
+    }
+    
+    .dist-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 3px;
+    }
   </style>
 </head>
 <body>
@@ -216,9 +245,27 @@
       <div class="info-box">
         <p>
           This chart visualizes the statistical distribution of max outflow values for both low and peak events in
-          the <span id="yearGroupDesc">2-year</span> return period. Each chart shows min/max range, 
-          quartiles, median, and average values.
+          the <span id="yearGroupDesc">2-year</span> return period. Each bar shows the median value with min/max range.
         </p>
+      </div>
+      
+      <div class="dist-indicator">
+        <div class="dist-item">
+          <div class="dist-color" style="background-color: #0056b3;"></div>
+          <div>Current</div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-color" style="background-color: #fd7e14;"></div>
+          <div>2050 Baseline</div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-color" style="background-color: #17a2b8;"></div>
+          <div>Replant</div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-color" style="background-color: #dc3545;"></div>
+          <div>Urban</div>
+        </div>
       </div>
       
       <div class="grid">
@@ -416,7 +463,7 @@
     }
     
     // Generate distribution data
-    function generateAreaDistributionData(yearGroup) {
+    function generateDistributionData(yearGroup) {
       const lowKey = `${yearGroup}-low`;
       const peakKey = `${yearGroup}-peak`;
       
@@ -522,54 +569,32 @@
     
     // Update distribution charts based on selected year group
     function updateDistributionCharts(yearGroup) {
-      const areaDistributionData = generateAreaDistributionData(yearGroup);
+      const distributionData = generateDistributionData(yearGroup);
       const yRange = yearGroup === '2yr' ? [1.0, 2.6] : [7.0, 24.0];
       
-      // Create bar charts for low and peak events
+      // Destroy old charts if they exist
       if (window.lowChart) window.lowChart.destroy();
       if (window.peakChart) window.peakChart.destroy();
       
-      const lowCtx = document.getElementById('lowChart').getContext('2d');
-      window.lowChart = new Chart(lowCtx, createBoxPlotConfig(areaDistributionData[0].data, yRange, 'Low'));
-      
-      const peakCtx = document.getElementById('peakChart').getContext('2d');
-      window.peakChart = new Chart(peakCtx, createBoxPlotConfig(areaDistributionData[1].data, yRange, 'Peak'));
+      // Create the new charts
+      createDistributionChart('lowChart', distributionData[0].data, yRange);
+      createDistributionChart('peakChart', distributionData[1].data, yRange);
       
       // Update statistics table
-      const tableBody = document.getElementById('statsTable').querySelector('tbody');
-      tableBody.innerHTML = '';
-      
-      // Add low data rows
-      areaDistributionData[0].data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>Low</td>
-          <td>${item.min.toFixed(3)}</td>
-          <td>${item.max.toFixed(3)}</td>
-          <td>${item.avg.toFixed(3)}</td>
-        `;
-        row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
-        tableBody.appendChild(row);
-      });
-      
-      // Add peak data rows
-      areaDistributionData[1].data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${item.name}</td>
-          <td>Peak</td>
-          <td>${item.min.toFixed(3)}</td>
-          <td>${item.max.toFixed(3)}</td>
-          <td>${item.avg.toFixed(3)}</td>
-        `;
-        row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
-        tableBody.appendChild(row);
-      });
+      updateStatsTable(distributionData);
     }
     
-    // Create box plot configuration
-    function createBoxPlotConfig(data, yRange, eventType) {
+    // Create a distribution chart
+    function createDistributionChart(chartId, data, yRange) {
+      const ctx = document.getElementById(chartId).getContext('2d');
+      
+      // Extract data for chart.js
+      const labels = data.map(d => d.name);
+      const medians = data.map(d => d.median);
+      const mins = data.map(d => d.min);
+      const maxes = data.map(d => d.max);
+      
+      // Define colors for each scenario
       const colors = {
         'Current': '#0056b3',
         '2050 Baseline': '#fd7e14',
@@ -577,34 +602,23 @@
         'Urban': '#dc3545'
       };
       
-      const bgColors = {
-        'Low': {
-          'Current': 'rgba(0,86,179,0.2)',
-          '2050 Baseline': 'rgba(253,126,20,0.2)',
-          'Replant': 'rgba(23,162,184,0.2)',
-          'Urban': 'rgba(220,53,69,0.2)'
-        },
-        'Peak': {
-          'Current': 'rgba(0,86,179,0.2)',
-          '2050 Baseline': 'rgba(253,126,20,0.2)',
-          'Replant': 'rgba(23,162,184,0.2)',
-          'Urban': 'rgba(220,53,69,0.2)'
-        }
-      };
+      // Create datasets for each data point
+      const datasets = [{
+        label: 'Median Values',
+        data: medians,
+        backgroundColor: data.map(d => colors[d.name]),
+        borderColor: data.map(d => colors[d.name]),
+        borderWidth: 1,
+        barPercentage: 0.6,
+        categoryPercentage: 0.8
+      }];
       
-      return {
+      // Create the chart
+      window[chartId] = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: data.map(d => d.name),
-          datasets: data.map(d => {
-            return {
-              label: d.name,
-              data: [d.median],
-              backgroundColor: bgColors[eventType][d.name],
-              borderColor: colors[d.name],
-              borderWidth: 1
-            };
-          })
+          labels: labels,
+          datasets: datasets
         },
         options: {
           responsive: true,
@@ -622,23 +636,111 @@
           plugins: {
             tooltip: {
               callbacks: {
+                title: function(context) {
+                  return context[0].label;
+                },
                 label: function(context) {
-                  const d = data[context.dataIndex];
+                  const index = context.dataIndex;
                   return [
-                    `${d.name} - ${eventType}`,
-                    `Min: ${d.min.toFixed(4)} cms`,
-                    `Q1: ${d.q1.toFixed(4)} cms`,
-                    `Median: ${d.median.toFixed(4)} cms`,
-                    `Q3: ${d.q3.toFixed(4)} cms`,
-                    `Max: ${d.max.toFixed(4)} cms`,
-                    `Avg: ${d.avg.toFixed(4)} cms`
+                    `Median: ${data[index].median.toFixed(4)} cms`,
+                    `Min: ${data[index].min.toFixed(4)} cms`,
+                    `Max: ${data[index].max.toFixed(4)} cms`,
+                    `Avg: ${data[index].avg.toFixed(4)} cms`,
+                    `Q1: ${data[index].q1.toFixed(4)} cms`,
+                    `Q3: ${data[index].q3.toFixed(4)} cms`
                   ];
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                line1: {
+                  type: 'line',
+                  yMin: 3,
+                  yMax: 3,
+                  borderColor: 'rgb(255, 99, 132)',
+                  borderWidth: 2,
                 }
               }
             }
           }
         }
-      };
+      });
+      
+      // Add error bars manually using canvas API
+      const chart = window[chartId];
+      const meta = chart.getDatasetMeta(0);
+      
+      chart.canvas.addEventListener('afterRender', function() {
+        const ctx = chart.ctx;
+        ctx.save();
+        
+        for (let i = 0; i < data.length; i++) {
+          if (!meta.data[i]) continue;
+          
+          const x = meta.data[i].x;
+          const width = meta.data[i].width / 2;
+          
+          // Convert min/max values to y-coordinates
+          const yMin = chart.scales.y.getPixelForValue(mins[i]);
+          const yMax = chart.scales.y.getPixelForValue(maxes[i]);
+          const yMedian = chart.scales.y.getPixelForValue(medians[i]);
+          
+          // Draw min-max line
+          ctx.beginPath();
+          ctx.moveTo(x, yMin);
+          ctx.lineTo(x, yMax);
+          ctx.strokeStyle = colors[labels[i]];
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Draw caps
+          ctx.beginPath();
+          ctx.moveTo(x - 5, yMin);
+          ctx.lineTo(x + 5, yMin);
+          ctx.moveTo(x - 5, yMax);
+          ctx.lineTo(x + 5, yMax);
+          ctx.strokeStyle = colors[labels[i]];
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        
+        ctx.restore();
+      });
+    }
+    
+    // Update the statistics table
+    function updateStatsTable(distributionData) {
+      const tableBody = document.getElementById('statsTable').querySelector('tbody');
+      tableBody.innerHTML = '';
+      
+      // Add low data rows
+      distributionData[0].data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>Low</td>
+          <td>${item.min.toFixed(3)}</td>
+          <td>${item.max.toFixed(3)}</td>
+          <td>${item.avg.toFixed(3)}</td>
+        `;
+        row.style.backgroundColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+        tableBody.appendChild(row);
+      });
+      
+      // Add peak data rows
+      distributionData[1].data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>Peak</td>
+          <td>${item.min.toFixed(3)}</td>
+          <td>${item.max.toFixed(3)}</td>
+          <td>${item.avg.toFixed(3)}</td>
+        `;
+        row.style.backgroundColor = index % 2 === 1 ? '#f9f9f9' : '#ffffff';
+        tableBody.appendChild(row);
+      });
     }
     
     // Initialize charts
