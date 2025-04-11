@@ -31,6 +31,7 @@
     
     .tabs {
       display: flex;
+      flex-wrap: wrap;
       border-bottom: 1px solid #dee2e6;
       margin-bottom: 2rem;
     }
@@ -42,6 +43,7 @@
       border: none;
       border-radius: 5px 5px 0 0;
       margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
       transition: all 0.3s;
     }
     
@@ -157,6 +159,12 @@
     .highlight {
       font-weight: 600;
     }
+    
+    .subtitle {
+      font-style: italic;
+      color: #6c757d;
+      margin-bottom: 1.5rem;
+    }
   </style>
 </head>
 <body>
@@ -172,10 +180,10 @@
   
   <main class="container">
     <div class="tabs">
-      <button class="tab active" data-tab="raw">Raw Outflow</button>
-      <button class="tab" data-tab="distribution">Distribution Analysis</button>
-      <button class="tab" data-tab="percentage">Percentage Change</button>
-      <button class="tab" data-tab="trends">Trend Analysis</button>
+      <button class="tab active" onclick="switchTab('raw')">Raw Outflow</button>
+      <button class="tab" onclick="switchTab('distribution')">Distribution Analysis</button>
+      <button class="tab" onclick="switchTab('percentage')">Percentage Change</button>
+      <button class="tab" onclick="switchTab('trends')">Trend Analysis</button>
     </div>
     
     <!-- Raw Outflow Tab -->
@@ -201,8 +209,8 @@
       <p class="subtitle">Combined low and peak scenario distribution</p>
       
       <div class="period-toggle">
-        <button class="period-button active" data-period="2yr">2-Year Return Period</button>
-        <button class="period-button" data-period="200yr">200-Year Return Period</button>
+        <button class="period-button active" onclick="updatePeriod('2yr')">2-Year Return Period</button>
+        <button class="period-button" onclick="updatePeriod('200yr')">200-Year Return Period</button>
       </div>
       
       <div class="info-box">
@@ -512,6 +520,47 @@
       ];
     }
     
+    // Switch tab function
+    function switchTab(tabId) {
+      // Hide all tab content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      // Show selected tab content
+      document.getElementById(tabId).classList.add('active');
+      
+      // Update active tab styling
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Find the tab with the matching onclick attribute and add the active class
+      document.querySelector(`button[onclick="switchTab('${tabId}')"]`).classList.add('active');
+    }
+    
+    // Period update function
+    function updatePeriod(period) {
+      // Update active button styling
+      document.querySelectorAll('.period-button').forEach(button => {
+        button.classList.remove('active');
+      });
+      
+      // Add active class to clicked button
+      document.querySelector(`button[onclick="updatePeriod('${period}')"]`).classList.add('active');
+      
+      // Update charts and text
+      updateDistributionCharts(period);
+      
+      // Update text
+      document.getElementById('yearGroupTitle').textContent = period === '2yr' ? '2-Year' : '200-Year';
+      document.getElementById('yearGroupDesc').textContent = period === '2yr' ? '2-year' : '200-year';
+      
+      // Update insights
+      document.getElementById('insights2yr').style.display = period === '2yr' ? 'block' : 'none';
+      document.getElementById('insights200yr').style.display = period === '200yr' ? 'block' : 'none';
+    }
+    
     // Initialize charts
     document.addEventListener('DOMContentLoaded', function() {
       // Raw Outflow Chart
@@ -706,48 +755,6 @@
       
       // Initialize distribution charts with 2yr data
       updateDistributionCharts('2yr');
-      
-      // Tab switching
-      const tabs = document.querySelectorAll('.tab');
-      const tabContents = document.querySelectorAll('.tab-content');
-      
-      tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          const tabId = tab.getAttribute('data-tab');
-          
-          // Remove active class from all tabs and contents
-          tabs.forEach(t => t.classList.remove('active'));
-          tabContents.forEach(c => c.classList.remove('active'));
-          
-          // Add active class to current tab and content
-          tab.classList.add('active');
-          document.getElementById(tabId).classList.add('active');
-        });
-      });
-      
-      // Period toggle
-      const periodButtons = document.querySelectorAll('.period-button');
-      
-      periodButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          const period = button.getAttribute('data-period');
-          
-          // Update active button
-          periodButtons.forEach(b => b.classList.remove('active'));
-          button.classList.add('active');
-          
-          // Update charts and text
-          updateDistributionCharts(period);
-          
-          // Update text
-          document.getElementById('yearGroupTitle').textContent = period === '2yr' ? '2-Year' : '200-Year';
-          document.getElementById('yearGroupDesc').textContent = period === '2yr' ? '2-year' : '200-year';
-          
-          // Update insights
-          document.getElementById('insights2yr').style.display = period === '2yr' ? 'block' : 'none';
-          document.getElementById('insights200yr').style.display = period === '200yr' ? 'block' : 'none';
-        });
-      });
     });
     
     // Update distribution charts based on selected year group
